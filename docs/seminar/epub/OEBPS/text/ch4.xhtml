@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <title>4. 테스트 카탈로그 · API · 결론</title>
+  <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+</head>
+<body>
+  <h1>4. 테스트 카탈로그 · API · 결론</h1>
+
+  <h2>4.1 13종 테스트 카탈로그</h2>
+  <p>메인 루프(<code>memtestG80_cli.cu:185</code>)는 한 번의 반복(iteration)마다 13종의 테스트를 순서대로
+  실행합니다. 테스트마다 다른 것은 "패턴 생성" 뿐이며, 2·3장에서 본 쓰기·검증·리덕션 뼈대는 그대로
+  재사용됩니다.</p>
+
+  <div class="table-wrap">
+  <table>
+    <caption>표 3. 테스트 카탈로그와 Memtest86 계보</caption>
+    <thead><tr><th>테스트</th><th>계보</th><th>노리는 결함</th></tr></thead>
+    <tbody>
+      <tr><td>Moving Inversions (1/0)</td><td>Memtest86 #2</td><td>stuck bit · 인접 간섭</td></tr>
+      <tr><td>Walking 8-bit (M86)</td><td>Memtest86 #3</td><td>데이터 라인 단락</td></tr>
+      <tr><td>True Walking 8-bit (0/1)</td><td>변형</td><td>주소·데이터 결합 결함</td></tr>
+      <tr><td>Moving Inversions (random)</td><td>Memtest86 #4</td><td>값 의존적 오류</td></tr>
+      <tr><td>Walking 32-bit (0/1)</td><td>Memtest86 #6</td><td>전체 워드폭 데이터 라인</td></tr>
+      <tr><td>Random Blocks</td><td>Memtest86 #7</td><td>무작위 패턴·재현 검증</td></tr>
+      <tr><td>Modulo-20</td><td>Memtest86 #8</td><td>주기적 주소 간섭</td></tr>
+      <tr><td>Logic / Short LCG (+shmem)</td><td>고유</td><td>연산 로직 · 반복 카운트</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>패턴은 비트 연산만으로 생성됩니다. 예를 들어 Walking 8-bit는 한 비트만 켠 값을 워드 전체로 복제합니다.</p>
+  <figure class="code">
+  <pre><span class="cm">// memtestG80_core.cu:392</span>
+shift &amp;= 0x7;
+uint pattern = 1 &lt;&lt; shift;
+pattern = pattern | (pattern&lt;&lt;8) | (pattern&lt;&lt;16) | (pattern&lt;&lt;24);  <span class="cm">// 8비트→워드 복제</span></pre>
+  <figcaption>코드 7. Walking 8-bit의 패턴 생성</figcaption>
+  </figure>
+
+  <p>특기할 만한 것은 <strong>Logic 테스트</strong>입니다. 다른 테스트가 메모리 저장을 검사한다면, 이 테스트는
+  ALU와 반복 제어를 검사합니다. 짧은 주기의 선형합동생성기(LCG, Linear Congruential Generator)를
+  <code>k·period</code>번 돌리되, 주기 후 값이 항상 0으로 되돌아오도록 설계합니다. 반복 횟수 k가 달라도 결과가
+  같아야 하므로, 차이가 나면 그것은 메모리가 아니라 <strong>로직 오류</strong>입니다. 오버클럭 안정성 검증에
+  특히 유용합니다.</p>
+
+  <h2>4.2 대역폭 측정</h2>
+  <p>테스트 전, 디바이스 내부의 device-to-device 복사를 반복해 실효 대역폭을 잽니다.</p>
+  <figure class="code">
+  <pre><span class="cm">// memtestG80_core.cu:168 — gpuMemoryBandwidth</span>
+<span class="kw">for</span> (uint i = 0; i &lt; iters; i++)
+    cudaMemcpy(dst, src, bytes, cudaMemcpyDeviceToDevice);  <span class="cm">// 디바이스 내부 복사</span>
+cudaThreadSynchronize();    <span class="cm">// ★ D2D는 비동기 → 반드시 동기화 후 시간 측정</span>
+<span class="kw">double</span> bw = 2.0 * (mbToTest*iters) / seconds;   <span class="cm">// 읽기+쓰기 → ×2</span></pre>
+  <figcaption>코드 8. 비동기 memcpy를 동기화 후에 측정하고, 읽기·쓰기를 함께 세어 ×2</figcaption>
+  </figure>
+
+  <h2>4.3 3계층 API 설계</h2>
+  <p>MemtestG80의 코드는 세 계층으로 깔끔하게 나뉩니다.</p>
+  <ul class="error-list">
+    <li><span class="node">Layer 3 · memtestState 클래스</span> — 사용자에게 권장되는 객체지향 인터페이스.
+    <code>allocate()</code>가 자원을 잡고, 각 <code>gpuXxx()</code> 메서드가 성공/실패를 bool로 반환합니다.</li>
+    <li><span class="node">Layer 2 · __host__ gpuXxx 함수</span> — 커널 실행 + 동기화 + 오류 리덕션을 묶은
+    저수준 C API.</li>
+    <li><span class="node">Layer 1 · __global__ deviceXxx 커널</span> — GPU에서 실제로 도는 테스트 본체.
+    내부 전용입니다.</li>
+  </ul>
+
+  <p><code>memtestState</code>는 C++의 RAII(Resource Acquisition Is Initialization) 패턴을 GPU 자원에
+  적용합니다. 소멸자가 <code>deallocate()</code>를 호출하므로, 객체가 스코프를 벗어나면 GPU 메모리가 자동
+  해제되어 누수를 막습니다. 이 도구를 라이브러리로 임베드하는 것은 다음처럼 간단합니다.</p>
+
+  <figure class="code">
+  <pre><span class="kw">#include</span> <span class="st">"memtestG80_core.h"</span>
+
+<span class="ty">bool</span> <span class="fn">gpuIsHealthy</span>(<span class="ty">int</span> mb) {
+    memtestState tester;
+    <span class="kw">if</span> (!tester.allocate(mb)) <span class="kw">return</span> <span class="kw">false</span>;
+    uint errors = 0, e;
+    tester.gpuMovingInversionsOnesZeros(e); errors += e;
+    <span class="kw">return</span> errors == 0;   <span class="cm">// 소멸자가 자동 해제</span>
+}</pre>
+  <figcaption>코드 9. 내 프로그램에서 GPU 건전성을 검증하는 최소 예제</figcaption>
+  </figure>
+
+  <div class="note">
+    <span class="note-title">오류 센티넬 — 40억을 넘는 "오류"의 정체</span>
+    <p>반환값이 <code>0xFFFFFFFF</code>이면 커널 실행 실패, <code>0xFFFFFFFE</code>이면 타임아웃입니다.
+    즉, 오류 수가 40억을 넘게 나오면 이는 진짜 결함이 아니라 센티넬 값이며, 대개 디스플레이를 구동 중인
+    GPU의 드라이버 워치독 타임아웃입니다. 테스트 영역을 줄이면 사라집니다.</p>
+  </div>
+
+  <h2>4.4 결론</h2>
+  <p>MemtestG80은 "GPU 메모리에 값을 쓰고, 다시 읽어 비교한다"는 단순한 아이디어를, 검증된 Memtest86
+  알고리즘과 CUDA의 병렬성으로 구현한 도구입니다. 그 안에는 입문자가 배울 수 있는 CUDA의 정수가 모두 담겨
+  있습니다 — <code>THREAD_ADDRESS</code>의 스레드 주소 매핑과 메모리 병합, <code>__popc</code>와 공유 메모리
+  트리 리덕션, 그리고 RAII 기반의 3계층 API 설계입니다.</p>
+
+  <p>코드를 처음 읽는다면 다음 순서를 권합니다.</p>
+  <ol>
+    <li><code>memtestG80_cli.cu</code>의 메인 루프 — 전체 흐름을 조망</li>
+    <li><code>memtestG80_core.cu:26</code>의 <code>THREAD_ADDRESS</code> — 모든 테스트의 심장</li>
+    <li><code>memtestG80_core.cu:213</code>의 <code>deviceVerifyConstant</code> — 병렬 리덕션</li>
+  </ol>
+  <p>이 세 곳이 MemtestG80 전체를 관통합니다.</p>
+
+  <hr class="sep"/>
+  <h3>참고</h3>
+  <ol class="references">
+    <li>Imran Haque, <em>MemtestG80</em> (open-source edition), Stanford University, 2009.
+    https://github.com/ihaque/memtestG80 · LGPL v3.</li>
+    <li>폐쇄형 버전 및 배경: https://simtk.org/home/memtest</li>
+    <li>NVIDIA, <em>CUDA C++ Programming Guide</em>.</li>
+  </ol>
+
+  <div class="translator-note">
+    본 해설서는 저장소의 소스 코드를 1차 자료로 삼아 집필되었으며, 모든 코드 인용은 현재 저장소의
+    <code>파일:줄번호</code> 기준입니다. 코드가 갱신되면 줄 번호가 달라질 수 있습니다.
+  </div>
+</body>
+</html>

@@ -1,0 +1,256 @@
+@charset "UTF-8";
+
+html {
+  font-size: 100%;
+}
+
+body {
+  font-family: "Noto Serif KR", "Nanum Myeongjo", "Batang", serif;
+  line-height: 1.75;
+  margin: 1em 1.2em;
+  color: #1a1a1a;
+  background: #ffffff;
+  /* 모든 문장 좌측 정렬 */
+  text-align: left;
+}
+
+/* 모든 요소 좌측 정렬 강제 */
+p, li, dd, dt, h1, h2, h3, h4, h5, h6, blockquote, figcaption, caption, td, th {
+  text-align: left;
+}
+
+h1, h2, h3, h4 {
+  font-family: "Noto Sans KR", "Nanum Gothic", "Malgun Gothic", sans-serif;
+  line-height: 1.4;
+  color: #10243e;
+  margin: 1.6em 0 0.6em;
+}
+
+h1 {
+  font-size: 1.6em;
+  border-bottom: 3px solid #10243e;
+  padding-bottom: 0.3em;
+  margin-top: 0.4em;
+}
+
+h2 {
+  font-size: 1.28em;
+  border-bottom: 1px solid #b9c4d4;
+  padding-bottom: 0.2em;
+}
+
+h3 {
+  font-size: 1.1em;
+  color: #1f3a5f;
+}
+
+p {
+  margin: 0.6em 0;
+  text-indent: 0;
+}
+
+/* 저자/소속 정보 */
+.authors {
+  font-size: 1.02em;
+  font-weight: 600;
+  margin: 0.4em 0 0.1em;
+}
+.affil {
+  margin: 0.05em 0;
+  color: #444;
+}
+.affil.email {
+  font-family: "Noto Sans KR", monospace;
+  color: #33506f;
+}
+
+/* 초록 */
+.abstract {
+  background: #f4f6f9;
+  border-left: 5px solid #10243e;
+  padding: 0.8em 1.1em;
+  margin: 1.2em 0;
+  border-radius: 4px;
+}
+.abstract .label {
+  font-weight: 700;
+  font-family: "Noto Sans KR", sans-serif;
+  color: #10243e;
+}
+.keywords {
+  font-size: 0.95em;
+  margin: 0.6em 0 0;
+}
+.keywords .label {
+  font-weight: 700;
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+/* '중요!' 등 강조 문단 테두리 처리 */
+.callout {
+  border: 2px solid #c0392b;
+  border-radius: 8px;
+  background: #fdf3f2;
+  padding: 0.8em 1.1em;
+  margin: 1.3em 0;
+}
+.callout .callout-title {
+  display: block;
+  font-family: "Noto Sans KR", sans-serif;
+  font-weight: 800;
+  color: #c0392b;
+  margin-bottom: 0.35em;
+  font-size: 1.02em;
+}
+.callout p {
+  margin: 0.3em 0;
+}
+
+.note {
+  border: 1px solid #2e6da4;
+  border-left: 5px solid #2e6da4;
+  border-radius: 6px;
+  background: #f0f6fb;
+  padding: 0.7em 1.0em;
+  margin: 1.2em 0;
+}
+.note .note-title {
+  display: block;
+  font-family: "Noto Sans KR", sans-serif;
+  font-weight: 700;
+  color: #2e6da4;
+  margin-bottom: 0.3em;
+}
+
+/* 코드 블록 다듬기 */
+figure.code {
+  margin: 1.3em 0;
+}
+pre {
+  font-family: "D2Coding", "Consolas", "Menlo", "DejaVu Sans Mono", monospace;
+  font-size: 0.82em;
+  line-height: 1.5;
+  background: #1e2430;
+  color: #e6e9ef;
+  border: 1px solid #10243e;
+  border-radius: 8px;
+  padding: 0.9em 1.0em;
+  overflow-x: auto;
+  white-space: pre;
+  -webkit-hyphens: none;
+  hyphens: none;
+  text-align: left;
+}
+pre .kw { color: #c792ea; }
+pre .ty { color: #82aaff; }
+pre .fn { color: #ffcb6b; }
+pre .st { color: #c3e88d; }
+pre .cm { color: #7f8ea3; font-style: italic; }
+code {
+  font-family: "D2Coding", "Consolas", "DejaVu Sans Mono", monospace;
+  font-size: 0.9em;
+  background: #eef1f5;
+  color: #b5334a;
+  padding: 0.05em 0.35em;
+  border-radius: 4px;
+}
+
+/* 그림 및 캡션 */
+figure {
+  margin: 1.3em 0;
+}
+figure img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border: 1px solid #cbd3de;
+  border-radius: 4px;
+}
+figcaption {
+  font-size: 0.9em;
+  color: #33506f;
+  font-family: "Noto Sans KR", sans-serif;
+  margin-top: 0.5em;
+  font-weight: 600;
+}
+
+/* 표 다듬기 */
+.table-wrap {
+  overflow-x: auto;
+  margin: 1.3em 0;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9em;
+  font-family: "Noto Sans KR", sans-serif;
+}
+table caption {
+  caption-side: top;
+  font-weight: 700;
+  color: #33506f;
+  margin-bottom: 0.5em;
+  text-align: left;
+}
+th, td {
+  border: 1px solid #b9c4d4;
+  padding: 0.5em 0.7em;
+  vertical-align: top;
+  text-align: left;
+}
+thead th {
+  background: #10243e;
+  color: #ffffff;
+  font-weight: 700;
+}
+tbody tr:nth-child(even) {
+  background: #f4f6f9;
+}
+tbody td:first-child {
+  font-weight: 600;
+  color: #10243e;
+}
+
+/* 목록 */
+ul, ol {
+  margin: 0.6em 0;
+  padding-left: 1.5em;
+}
+li {
+  margin: 0.4em 0;
+}
+ul.error-list > li {
+  margin: 0.7em 0;
+}
+ul.error-list .node {
+  font-family: "Noto Sans KR", sans-serif;
+  font-weight: 700;
+  color: #10243e;
+}
+
+/* 참고문헌 */
+ol.references {
+  font-size: 0.92em;
+  padding-left: 2.2em;
+}
+ol.references li {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+hr.sep {
+  border: none;
+  border-top: 1px solid #d5dce5;
+  margin: 2em 0;
+}
+
+.translator-note {
+  font-size: 0.85em;
+  color: #566;
+  background: #f7f7f4;
+  border: 1px dashed #c9c9bf;
+  border-radius: 6px;
+  padding: 0.7em 1em;
+  margin: 1.5em 0;
+}

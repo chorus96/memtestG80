@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <title>표지</title>
+  <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+</head>
+<body>
+  <h1>GPU 메모리 검증의 내부 구조</h1>
+  <p class="authors">MemtestG80 코드로 읽는 CUDA 병렬 프로그래밍</p>
+  <p class="affil">원저작: Imran Haque, Stanford University (2009)</p>
+  <p class="affil email">원본 코드: github.com/ihaque/memtestG80 · LGPL v3</p>
+
+  <hr class="sep"/>
+
+  <div class="abstract">
+    <p><span class="label">이 책에 관하여.</span> 이 전자책은 오픈소스 GPU 메모리 테스터
+    <strong>MemtestG80</strong>의 실제 소스 코드(<code>memtestG80_core.cu</code> 등)를 바탕으로,
+    CUDA 병렬 프로그래밍의 핵심 원리를 코드와 함께 설명하는 한국어 기술 해설서입니다. 단순한 "쓰고 되읽기"라는
+    아이디어가 어떻게 수십만 스레드의 병렬성, 공유 메모리 리덕션, 비트 단위 오류 집계로 구현되는지를 따라갑니다.</p>
+    <p class="keywords"><span class="label">키워드:</span> GPU 메모리 테스트, CUDA, 병렬 리덕션,
+    메모리 병합(coalescing), 공유 메모리, __popc, ECC, 소프트 오류</p>
+  </div>
+
+  <div class="translator-note">
+    이 해설서는 MemtestG80의 배경 논문이 저장소에 포함되어 있지 않아, 대응 자료인 자매 프로젝트
+    <code>cuda_memtest</code>의 SAAHPC'09 논문 한국어판과 같은 형식(EPUB)으로, <strong>MemtestG80의 실제
+    소스 코드를 1차 자료로 삼아</strong> 새로 집필한 것입니다. 모든 코드 인용은 현재 저장소의
+    <code>파일:줄번호</code> 기준입니다.
+  </div>
+
+  <h2>차례</h2>
+  <ol>
+    <li>왜 GPU 메모리를 검사하는가 · MemtestG80 개요</li>
+    <li>CUDA 실행 모델과 주소 매핑</li>
+    <li>쓰기·검증과 병렬 리덕션</li>
+    <li>테스트 카탈로그 · API · 결론</li>
+  </ol>
+</body>
+</html>

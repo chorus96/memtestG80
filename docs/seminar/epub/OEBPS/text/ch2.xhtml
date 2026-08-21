@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <title>2. CUDA 실행 모델과 주소 매핑</title>
+  <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+</head>
+<body>
+  <h1>2. CUDA 실행 모델과 주소 매핑</h1>
+
+  <h2 id="exec">2.1 커널과 실행 계층</h2>
+  <p>CUDA에서 GPU 위에서 실행되는 함수를 <strong>커널(kernel)</strong>이라 부르며, <code>__global__</code>
+  한정자로 표시합니다. 커널은 CPU(호스트, host)가 호출하고 GPU(디바이스, device)의 수많은 스레드가 동시에
+  실행합니다. 반환형은 항상 <code>void</code>이며, 결과는 인자로 받은 디바이스 포인터를 통해 메모리에
+  남깁니다.</p>
+
+  <p>커널을 실행하면 스레드는 3단 계층으로 조직됩니다. 큰 격자인 <strong>그리드(grid)</strong> 안에
+  <strong>블록(block)</strong>이 있고, 블록 안에 <strong>스레드(thread)</strong>가 있습니다. 각 스레드는
+  다음 내장 변수로 자기 위치를 압니다.</p>
+
+  <div class="table-wrap">
+  <table>
+    <caption>표 2. CUDA 내장 변수 (MemtestG80은 1차원 .x만 사용)</caption>
+    <thead><tr><th>변수</th><th>의미</th><th>MemtestG80 값</th></tr></thead>
+    <tbody>
+      <tr><td>blockIdx.x</td><td>그리드 안에서 이 블록의 번호</td><td>0 ~ 1023 (스레드마다 다름)</td></tr>
+      <tr><td>threadIdx.x</td><td>블록 안에서 이 스레드의 번호</td><td>0 ~ 511 (스레드마다 다름)</td></tr>
+      <tr><td>blockDim.x</td><td>블록당 스레드 수</td><td>512 (모두 같음)</td></tr>
+      <tr><td>gridDim.x</td><td>그리드의 블록 수</td><td>1024 (모두 같음)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>메모리는 결국 1차원 주소 공간이므로, MemtestG80은 그리드·블록·스레드를 모두 1차원(<code>.x</code>)으로만
+  씁니다. 커널 실행은 삼중 꺾쇠 <code>&lt;&lt;&lt;nBlocks, nThreads&gt;&gt;&gt;</code>로 구성을 지정합니다.</p>
+
+  <h2 id="addr">2.2 THREAD_ADDRESS와 메모리 병합</h2>
+  <p>이 도구의 심장은 단 한 줄의 매크로입니다. 모든 테스트 커널이 이 매크로로 자신이 건드릴 메모리 주소를
+  계산합니다.</p>
+
+  <figure class="code">
+  <pre><span class="cm">// memtestG80_core.cu:26</span>
+<span class="kw">#define</span> THREAD_ADDRESS(base, N, i) \
+    (base + blockIdx.x * N * blockDim.x + i * blockDim.x + threadIdx.x)</pre>
+  <figcaption>코드 1. 스레드가 i번째 반복에 건드릴 word 주소를 계산하는 매크로</figcaption>
+  </figure>
+
+  <p>네 개의 항이 각각 역할을 나눠 맡습니다.</p>
+  <ul class="error-list">
+    <li><span class="node">base</span> — 테스트 영역의 시작 주소.</li>
+    <li><span class="node">blockIdx.x * N * blockDim.x</span> — 이 블록이 담당하는 큰 구역의 시작.
+    블록마다 <code>N × 512</code> word씩 널찍이 떨어져 서로 겹치지 않습니다.</li>
+    <li><span class="node">i * blockDim.x</span> — 블록 안에서 i번째 반복의 오프셋. 한 스레드가 총 N개의
+    word를 담당합니다.</li>
+    <li><span class="node">threadIdx.x</span> — 그 안에서 내 스레드의 위치(0~511).</li>
+  </ul>
+
+  <div class="note">
+    <span class="note-title">왜 이렇게 매핑하는가 — 메모리 병합(coalescing)</span>
+    <p>핵심은 <strong>인터리빙</strong>입니다. 같은 반복 <code>i</code>에서 이웃한 스레드
+    (<code>threadIdx.x</code>가 인접한 스레드)는 이웃한 메모리 주소를 맡습니다. 덕분에 워프(warp, 32개
+    스레드)의 접근이 하나의 메모리 트랜잭션으로 묶이는 <strong>메모리 병합(coalescing)</strong>이 일어나
+    대역폭을 최대로 활용합니다. 만약 각 스레드가 큰 간격으로 흩어진 구간을 맡으면 트랜잭션이 쪼개져
+    느려집니다.</p>
+  </div>
+
+  <p>이 매크로가 인덱싱의 복잡함을 모두 흡수한 덕분에, 실제 커널 본문은 놀랍도록 단순해집니다. 가장 기본이
+  되는 쓰기 커널을 봅시다.</p>
+
+  <figure class="code">
+  <pre><span class="cm">// memtestG80_core.cu:189</span>
+<span class="kw">__global__</span> <span class="ty">void</span> <span class="fn">deviceWriteConstant</span>(uint* base, uint N, <span class="kw">const</span> uint constant) {
+    <span class="kw">for</span> (uint i = 0; i &lt; N; i++) {
+        *(THREAD_ADDRESS(base, N, i)) = constant;   <span class="cm">// 각 스레드가 자기 word들을 채움</span>
+    }
+}</pre>
+  <figcaption>코드 2. 가장 단순한 커널 — 경계 검사조차 없다</figcaption>
+  </figure>
+
+  <p>경계 검사가 없는 이유는, 테스트 영역이 항상 <code>2·N MiB</code>의 배수(<code>1024 × 512 × N</code> word)로
+  할당되어 그리드에 정확히 맞아떨어지기 때문입니다. 범위를 벗어나는 스레드가 존재하지 않으므로, 복잡함은
+  전부 <code>THREAD_ADDRESS</code>가 흡수하고 커널은 세 줄로 끝납니다.</p>
+</body>
+</html>
