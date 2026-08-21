@@ -44,6 +44,12 @@
   오버클럭, 오버클럭 여부 불명 카드로 나눈다. 결과는 Folding@home 상 카드의 근소한 다수가 오버클럭되어 있으며, 대부분의
   이터레이션 컷오프에서 오버클럭 카드와 정격 카드 수가 비슷함을 보여준다.</p>
 
+  <figure>
+    <img src="../images/fig2.png" alt="이터레이션 컷오프 이상을 완료한 카드 수(로그 스케일) 그래프"/>
+    <figcaption>그림 2. 최소 주어진 수의 테스트 이터레이션을 완료한 카드 수. 전체 카드, 오버클럭된 셰이더,
+    정격 주파수, 오버클럭 여부 불명으로 나누어 표시.</figcaption>
+  </figure>
+
   <p>끝으로 우리는 NVIDIA 제품군 전반의 GPU를 잘 포괄했다. 표 I은 실험 동안 최소 300,000회 이터레이션을 완료한 특정
   NVIDIA 제품군의 카드 수를 보여준다. 데이터셋이 Folding@home의 소비자 지향적 성격 탓에 NVIDIA 소비자 그래픽 카드
   (GeForce)에 강하게 치우쳐 있으나, 소수의 프로페셔널(Quadro)·GPGPU 전용(Tesla) 보드도 표본에 포함된다.</p>
@@ -81,7 +87,7 @@
   그림과 분석에서 "P(fail)"은 임의의 카드가 단일 MemtestG80 이터레이션에서 실패할 확률을 가리킨다.</p>
 
   <figure>
-    <img src="../images/figure2.png" alt="카드 실패 확률의 경험적 CDF·PMF 그래프"/>
+    <img src="../images/fig3.png" alt="카드 실패 확률의 경험적 CDF·PMF 그래프"/>
     <figcaption>그림 3. 카드 실패 확률의 경험적 확률질량함수(PMF)와 누적분포함수(CDF). (a) 여러 테스트-이터레이션 수
     임계값에서의 경험적 CDF. (b) 최소 300,000회 MemtestG80 이터레이션을 실행한 카드의 경험적 PMF·CDF.</figcaption>
   </figure>

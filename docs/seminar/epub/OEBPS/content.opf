@@ -21,8 +21,11 @@
     <item id="ch2" href="text/ch2.xhtml" media-type="application/xhtml+xml"/>
     <item id="ch3" href="text/ch3.xhtml" media-type="application/xhtml+xml"/>
     <item id="ch4" href="text/ch4.xhtml" media-type="application/xhtml+xml"/>
-    <item id="fig1" href="images/figure1.png" media-type="image/png"/>
-    <item id="fig2" href="images/figure2.png" media-type="image/png"/>
+    <item id="fig1" href="images/fig1.png" media-type="image/png"/>
+    <item id="fig2" href="images/fig2.png" media-type="image/png"/>
+    <item id="fig3" href="images/fig3.png" media-type="image/png"/>
+    <item id="fig4" href="images/fig4.png" media-type="image/png"/>
+    <item id="fig5" href="images/fig5.png" media-type="image/png"/>
   </manifest>
   <spine toc="ncx">
     <itemref idref="title"/>
