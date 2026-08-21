@@ -29,8 +29,9 @@
 | [`paper/haque_pande_2009_memtestG80.pdf`](paper/) | 원논문 PDF — *Hard Data on Soft Errors* (arXiv:0910.0505v2) | ✅ 추가 |
 | [`소프트오류_실측데이터_GPGPU_한국어판.epub`](소프트오류_실측데이터_GPGPU_한국어판.epub) | 원논문 한국어 번역판 전자책 (전 5장, 그림·표·참고문헌 포함) | ✅ 완성 |
 | [`epub/`](epub/) | 위 EPUB의 빌드 소스 (재패키징용) | ✅ |
+| [`presentation/`](presentation/) | LACSS 2010 발표 슬라이드 한국어판 (PPTX 21매, Fermi·AMD 확장) + 원본 PDF | ✅ 완성 |
 
-**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1.
+**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1 + 발표 PPTX 한국어판 1.
 
 ## 세션 로드맵
 
@@ -70,7 +71,7 @@ zip -X -9 -r ../소프트오류_실측데이터_GPGPU_한국어판.epub META-INF
 ```
 
 > 이 전자책은 MemtestG80의 원논문 *Hard Data on Soft Errors: A Large-Scale Assessment of Real-World Error Rates in GPGPU*
-> (Haque & Pande, arXiv:0910.0505v2, 2009)의 한국어 번역판입니다. 원문의 절 구성·그림(1·3)·표(I)·참고문헌을 포함합니다.
+> (Haque & Pande, arXiv:0910.0505v2, 2009)의 한국어 번역판입니다. 원문의 절 구성·그림(1~5)·표(I)·참고문헌을 포함합니다.
 > 원문 PDF는 `paper/haque_pande_2009_memtestG80.pdf`에 있습니다.
 
 ## `memtestG80` vs `cuda_memtest`
