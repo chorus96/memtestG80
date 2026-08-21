@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <title>표지</title>
+  <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+</head>
+<body>
+  <h1>소프트 오류에 관한 실측 데이터</h1>
+  <h2 style="border:none;margin-top:0.2em;color:#1f3a5f;">GPGPU의 실제 오류율에 대한 대규모 조사</h2>
+  <p class="authors">Imran S. Haque<sup>1</sup> · Vijay S. Pande<sup>1,2</sup></p>
+  <p class="affil">스탠퍼드 대학교 <sup>1</sup>컴퓨터과학과 · <sup>2</sup>화학과</p>
+  <p class="affil email">원문: Hard Data on Soft Errors — arXiv:0910.0505v2 [cs.AR], 2009-11-14</p>
+
+  <hr class="sep"/>
+
+  <div class="abstract">
+    <p><span class="label">초록.</span> 그래픽 처리 장치(GPU)는 기존 CPU 대비 압도적인 성능 이점 덕분에 계산화학을 비롯한
+    과학 시뮬레이션 분야에서 널리 쓰이고 있다. 그러나 오류에 민감한 응용에서 GPU의 신뢰성은 대체로 입증되지 않았다.
+    특히 그래픽 카드의 메모리 서브시스템에 오류 검사·정정(ECC) 기능이 없다는 점이 GPU를 고성능 코프로세서로
+    받아들이는 데 걸림돌로 지적되어 왔으나, 이 설계가 미치는 영향은 지금까지 정량화된 바 없었다.</p>
+    <p>본 논문에서 우리는 NVIDIA G80 및 GT200 아키텍처 기반 그래픽 카드의 메모리 오류율을 평가하는 소프트웨어인
+    <strong>MemtestG80</strong>을 제시한다. 나아가 Folding@home 분산 컴퓨팅 네트워크의 2만 개가 넘는 호스트에서
+    MemtestG80을 실행해 수행한 GPU 오류율의 대규모 조사 결과를 제시한다. 통제된 환경의 소비자용 및 GPGPU 전용
+    하드웨어에 대한 대조 실험에서는 오류가 발견되지 않았다. 그러나 Folding@home 상의 카드를 대상으로 한 조사에서는,
+    설치된 환경에서 시험한 GPU의 <strong>3분의 2</strong>가 검출 가능한, 패턴에 민감한 메모리 소프트 오류율을 보였다.
+    우리는 이 오류가 오버클럭과 (온도의 대리 지표인) 환경 요인을 통제한 뒤에도 지속되지만, 보드 아키텍처에 강하게
+    의존함을 보인다.</p>
+    <p class="keywords"><span class="label">핵심어:</span> GPGPU, 소프트 오류, 메모리 신뢰성, MemtestG80, ECC,
+    Folding@home, 오버클럭, G80/GT200 아키텍처</p>
+  </div>
+
+  <div class="translator-note">
+    이 전자책은 원논문(arXiv:0910.0505v2)의 한국어 번역판입니다. 원문의 절 구성·그림·표·참고문헌 번호를 그대로 따르며,
+    수식과 정량적 수치는 원문 그대로 옮겼습니다. 그림 1~5 전부를 원 PDF에서 추출해 수록했습니다. 원문 PDF는 저장소의
+    <code>docs/seminar/paper/haque_pande_2009_memtestG80.pdf</code>에 있습니다.
+  </div>
+
+  <h2>차례</h2>
+  <ol>
+    <li>I. 서론 · II. 배경 및 선행 연구</li>
+    <li>III. MemtestG80의 설계와 검증 (오프로드·병렬화, 로직 테스트, 대조 실험)</li>
+    <li>IV. 실험 방법론 · V. 결과</li>
+    <li>VI. 분석 · VII. 결론 · 감사의 글 · 참고문헌</li>
+  </ol>
+</body>
+</html>

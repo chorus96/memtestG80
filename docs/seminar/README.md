@@ -1,0 +1,90 @@
+# CUDA 세미나 — `memtestG80`로 배우는 실전 GPU 프로그래밍
+
+이 디렉터리는 `memtestG80` 저장소의 **실제 소스 코드**를 교재로 삼는 CUDA 입문 세미나 자료 모음입니다.
+
+- **대상**: C 언어는 알지만 CUDA는 처음인 입문자
+- **형식**: 다회차 시리즈 (세션 0 ~ 세션 5)
+- **표기**: 한글 용어 옆에 원어(영어)를 병기합니다. 예) 커널(kernel)
+
+## 자료 구성
+
+| 파일/폴더 | 내용 | 상태 |
+|---|---|---|
+| [`커리큘럼.md`](커리큘럼.md) | 전체 시리즈(세션 0~5) 설계 · 학습목표 · 코드 지도 · 준비물 | ✅ 완성 |
+| [`세션0_실습랩.md`](세션0_실습랩.md) | 세션 0 환경 구축 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션0_환경구축과_큰그림.pptx`](slides/) | 세션 0 슬라이드 덱 (12매, 다이어그램 포함) | ✅ 완성 |
+| [`세션1_실습랩.md`](세션1_실습랩.md) | 세션 1 스레드 모델·주소 매핑 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션1_스레드모델과_주소매핑.pptx`](slides/) | 세션 1 슬라이드 덱 (12매, 다이어그램 포함) | ✅ 완성 |
+| [`세션2_실습랩.md`](세션2_실습랩.md) | 세션 2 쓰기·검증 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션2_메모리모델과_쓰기검증.pptx`](slides/) | 세션 2 슬라이드 덱 (11매, 다이어그램 포함) | ✅ 완성 |
+| [`세션3_실습랩.md`](세션3_실습랩.md) | 세션 3 공유 메모리·병렬 리덕션 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션3_공유메모리와_병렬리덕션.pptx`](slides/) | 세션 3 슬라이드 덱 (11매, 다이어그램 포함) | ✅ 완성 |
+| [`세션4_실습랩.md`](세션4_실습랩.md) | 세션 4 테스트 알고리즘·성능 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션4_테스트알고리즘과_성능측정.pptx`](slides/) | 세션 4 슬라이드 덱 (11매, 다이어그램 포함) | ✅ 완성 |
+| [`세션5_실습랩_캡스톤.md`](세션5_실습랩_캡스톤.md) | 세션 5 실습 + 캡스톤 프로젝트 가이드 | ✅ 완성 |
+| [`slides/세션5_객체지향API_라이브러리_캡스톤.pptx`](slides/) | 세션 5 슬라이드 덱 (11매, 다이어그램 포함) | ✅ 완성 |
+| `slides/build_session{0..5}.js` | 위 덱을 생성한 pptxgenjs 스크립트 (재생성용) | ✅ |
+| `slides/_deck.js` | 슬라이드 공통 팔레트·헬퍼 | ✅ |
+| [`memtestG80-seminar.html`](memtestG80-seminar.html) | 요약 발표본 (단일 HTML 덱, 16매) | ✅ 보너스 |
+| [`paper/haque_pande_2009_memtestG80.pdf`](paper/) | 원논문 PDF — *Hard Data on Soft Errors* (arXiv:0910.0505v2) | ✅ 추가 |
+| [`소프트오류_실측데이터_GPGPU_한국어판.epub`](소프트오류_실측데이터_GPGPU_한국어판.epub) | 원논문 한국어 번역판 전자책 (전 5장, 그림·표·참고문헌 포함) | ✅ 완성 |
+| [`epub/`](epub/) | 위 EPUB의 빌드 소스 (재패키징용) | ✅ |
+| [`presentation/`](presentation/) | LACSS 2010 발표 슬라이드 한국어판 (PPTX 21매, Fermi·AMD 확장) + 원본 PDF | ✅ 완성 |
+
+**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1 + 발표 PPTX 한국어판 1.
+
+## 세션 로드맵
+
+```
+세션 0  환경 구축 & 큰 그림                    ✅ 완성  ← 오리엔테이션
+세션 1  스레드 모델 & 주소 매핑 (THREAD_ADDRESS) ✅ 완성  ← 핵심 회차
+세션 2  메모리 모델 & 쓰기·검증 패턴            ✅ 완성
+세션 3  공유 메모리 & 병렬 리덕션               ✅ 완성  ← 이 도구의 백미
+세션 4  테스트 알고리즘 & 성능 측정             ✅ 완성
+세션 5  객체지향 API · 라이브러리 · 캡스톤       ✅ 완성  ← 본편(1~5) 완결
+```
+
+각 세션은 **[개념 강의(슬라이드)] → [코드 리딩(실제 파일)] → [실습 랩(직접 수정·실행)]** 3단 구성입니다.
+
+## 슬라이드 덱 다시 만들기
+
+```bash
+cd slides
+npm install pptxgenjs      # 최초 1회
+node build_session0.js     # 세션0_환경구축과_큰그림.pptx 생성
+node build_session1.js     # 세션1_스레드모델과_주소매핑.pptx 생성
+node build_session2.js     # 세션2_메모리모델과_쓰기검증.pptx 생성
+node build_session3.js     # 세션3_공유메모리와_병렬리덕션.pptx 생성
+node build_session4.js     # 세션4_테스트알고리즘과_성능측정.pptx 생성
+node build_session5.js     # 세션5_객체지향API_라이브러리_캡스톤.pptx 생성
+```
+
+> 슬라이드는 한글 폰트로 **맑은 고딕(Malgun Gothic)** 을, 코드에는 **Courier New** 를 사용합니다.
+> PowerPoint(한국어 Office)에서 정상 표시됩니다. 모든 덱은 `_deck.js`의 "하드웨어 진단 계측기" 테마(딥 슬레이트 + 앰버/틸)를 공유합니다.
+
+## EPUB 다시 만들기
+
+```bash
+cd epub
+zip -X -0 ../소프트오류_실측데이터_GPGPU_한국어판.epub mimetype       # mimetype은 첫 항목·무압축
+zip -X -9 -r ../소프트오류_실측데이터_GPGPU_한국어판.epub META-INF OEBPS
+```
+
+> 이 전자책은 MemtestG80의 원논문 *Hard Data on Soft Errors: A Large-Scale Assessment of Real-World Error Rates in GPGPU*
+> (Haque & Pande, arXiv:0910.0505v2, 2009)의 한국어 번역판입니다. 원문의 절 구성·그림(1~5)·표(I)·참고문헌을 포함합니다.
+> 원문 PDF는 `paper/haque_pande_2009_memtestG80.pdf`에 있습니다.
+
+## `memtestG80` vs `cuda_memtest`
+
+두 도구 모두 GPU 메모리 테스터지만 교재로서 강조점이 다릅니다.
+
+- **cuda_memtest**: `<<<grid, 1>>>` (블록당 스레드 1개)의 의도적으로 단순한 커널 → CUDA **문법 입문**에 최적
+- **memtestG80**: `<<<1024, 512>>>` + 공유 메모리 리덕션 + coalescing → CUDA **병렬 패턴**을 실코드로 학습
+
+본 커리큘럼은 memtestG80의 강점(세션 1의 주소 매핑, 세션 3의 병렬 리덕션)에 초점을 맞춥니다.
+
+## 참고
+
+- 원본 프로젝트: https://github.com/ihaque/memtestG80 (LGPL v3)
+- 폐쇄형 버전: https://simtk.org/home/memtest
+- NVIDIA CUDA C++ Programming Guide (공식 문서)

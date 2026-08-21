@@ -1,0 +1,686 @@
+<title>MemtestG80 심층 분석</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+
+<style>
+  :root {
+    --ink:        #101722;
+    --panel:      #18212e;
+    --panel-2:    #1f2a3a;
+    --line:       #2c3a4e;
+    --fg:         #e7edf5;
+    --fg-dim:     #9fb0c4;
+    --fg-faint:   #6b7d94;
+    --amber:      #e8a33d;
+    --amber-soft: #f2c079;
+    --teal:       #3fb8c4;
+    --red:        #e6604f;
+    --grid-dot:   rgba(159, 176, 196, 0.10);
+    --code-bg:    #0b1119;
+    --shadow:     0 24px 60px -30px rgba(0,0,0,.7);
+  }
+  /* This deck commits to a single dark "diagnostic instrument" world on purpose. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink);
+    color: var(--fg);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ---------- Deck scaffold ---------- */
+  .deck { height: 100vh; width: 100vw; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    padding: clamp(28px, 5vh, 64px) clamp(28px, 6vw, 110px) clamp(64px, 9vh, 96px);
+    flex-direction: column;
+    justify-content: center;
+    background-image:
+      radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 0);
+    background-size: 26px 26px;
+    animation: slideIn .45s cubic-bezier(.22,.61,.36,1);
+    overflow-y: auto;
+  }
+  .slide.active { display: flex; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .slide { animation: none; }
+  }
+
+  /* ---------- Persistent diagnostic rail ---------- */
+  .rail {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; align-items: center; gap: 18px;
+    padding: 10px clamp(20px, 5vw, 44px);
+    background: linear-gradient(to top, var(--ink) 70%, transparent);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px; color: var(--fg-faint);
+  }
+  .rail .brand { color: var(--amber); font-weight: 600; letter-spacing: .5px; }
+  .rail .brand b { color: var(--fg-dim); font-weight: 500; }
+  .progress { flex: 1; height: 2px; background: var(--line); position: relative; overflow: hidden; }
+  .progress > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--amber); transition: width .35s ease; }
+  .counter { color: var(--fg-dim); font-variant-numeric: tabular-nums; }
+  .counter b { color: var(--amber); font-weight: 600; }
+  .dots { display: flex; gap: 7px; }
+  .dots button {
+    width: 8px; height: 8px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
+    background: var(--line); transition: transform .2s, background .2s;
+  }
+  .dots button:hover { background: var(--fg-faint); }
+  .dots button[aria-current="true"] { background: var(--amber); transform: scale(1.35); }
+  .dots button:focus-visible, .navbtn:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+
+  .nav { position: fixed; z-index: 30; bottom: 42px; right: clamp(20px, 5vw, 44px); display: flex; gap: 8px; }
+  .navbtn {
+    width: 38px; height: 34px; border: 1px solid var(--line); background: var(--panel);
+    color: var(--fg-dim); border-radius: 7px; cursor: pointer; font-size: 15px;
+    display: grid; place-items: center; transition: border-color .2s, color .2s, background .2s;
+  }
+  .navbtn:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-2); }
+
+  /* ---------- Typography ---------- */
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--teal); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--teal); opacity: .7; }
+  h1 {
+    font-family: "Chakra Petch", sans-serif; font-weight: 700;
+    font-size: clamp(34px, 6.2vw, 76px); line-height: 1.02; letter-spacing: -.5px;
+    text-wrap: balance; margin-bottom: 22px;
+  }
+  h2 {
+    font-family: "Chakra Petch", sans-serif; font-weight: 600;
+    font-size: clamp(26px, 4vw, 46px); line-height: 1.08; letter-spacing: -.3px;
+    text-wrap: balance; margin-bottom: 26px;
+  }
+  h2 .k { color: var(--amber); }
+  .lead { font-size: clamp(16px, 1.9vw, 21px); color: var(--fg-dim); max-width: 62ch; text-wrap: pretty; }
+  p { text-wrap: pretty; }
+  strong { color: var(--fg); font-weight: 600; }
+  .amber { color: var(--amber); }
+  .teal  { color: var(--teal); }
+
+  /* ---------- Reusable blocks ---------- */
+  .cols { display: grid; gap: clamp(22px, 3vw, 48px); align-items: start; }
+  .cols.two { grid-template-columns: 1fr 1fr; }
+  .cols.split { grid-template-columns: 1.05fr 1fr; }
+  @media (max-width: 860px) { .cols.two, .cols.split { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 24px; box-shadow: var(--shadow);
+  }
+  .card h3 {
+    font-family: "Chakra Petch", sans-serif; font-size: 18px; font-weight: 600;
+    margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+  }
+  .card p { color: var(--fg-dim); font-size: 15px; }
+  .card .tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink);
+    background: var(--amber); padding: 1px 7px; border-radius: 4px; font-weight: 600;
+  }
+
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .grid4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 860px) { .grid3 { grid-template-columns: 1fr; } .grid4 { grid-template-columns: 1fr; } }
+
+  ul.clean { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  ul.clean li { position: relative; padding-left: 26px; color: var(--fg-dim); font-size: clamp(15px,1.6vw,17px); }
+  ul.clean li::before {
+    content: ""; position: absolute; left: 0; top: .55em; width: 9px; height: 9px;
+    background: var(--amber); border-radius: 2px; transform: rotate(45deg);
+  }
+  ul.clean li strong { color: var(--fg); }
+
+  code, pre { font-family: "IBM Plex Mono", monospace; }
+  .code {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; font-size: clamp(12px, 1.25vw, 14.5px); line-height: 1.7;
+    overflow-x: auto; color: #cdd9e6; box-shadow: var(--shadow);
+    position: relative;
+  }
+  .code::before {
+    content: attr(data-file); position: absolute; top: 0; right: 14px;
+    transform: translateY(-50%); background: var(--panel-2); border: 1px solid var(--line);
+    color: var(--fg-faint); font-size: 10.5px; padding: 2px 9px; border-radius: 4px; letter-spacing: .5px;
+  }
+  .code .c { color: var(--fg-faint); font-style: italic; }
+  .code .kw { color: var(--amber-soft); }
+  .code .fn { color: var(--teal); }
+  .code .num { color: #b58cf0; }
+  .code .str { color: #86c98a; }
+  code.inline { background: var(--panel-2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 4px; font-size: .9em; color: var(--amber-soft); }
+
+  .stat { display: flex; flex-direction: column; gap: 4px; }
+  .stat .n { font-family: "Chakra Petch", sans-serif; font-size: clamp(30px, 4.5vw, 52px); font-weight: 700; color: var(--amber); line-height: 1; }
+  .stat .l { font-size: 13.5px; color: var(--fg-dim); }
+
+  /* Test-catalogue table */
+  .tbl { width: 100%; border-collapse: collapse; font-size: clamp(12px,1.35vw,15px); }
+  .tbl th, .tbl td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); }
+  .tbl th { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--teal); font-weight: 500; }
+  .tbl td { color: var(--fg-dim); }
+  .tbl td:first-child { color: var(--fg); font-family: "IBM Plex Mono", monospace; }
+  .tbl tr:hover td { background: rgba(232,163,61,.05); }
+  .tbl .m { font-family: "IBM Plex Mono", monospace; color: var(--amber-soft); font-size: .92em; }
+  .wrap-x { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; font-family: "IBM Plex Mono", monospace;
+    font-size: 12px; color: var(--fg-dim); border: 1px solid var(--line); background: var(--panel);
+    padding: 5px 12px; border-radius: 100px;
+  }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+  .pill.warn .dot { background: var(--amber); }
+  .pill.err .dot { background: var(--red); }
+
+  .flow { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; }
+  .flow .step {
+    flex: 1; min-width: 150px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px 18px; position: relative;
+  }
+  .flow .step .s { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--teal); letter-spacing: 1px; }
+  .flow .step h4 { font-family: "Chakra Petch", sans-serif; font-size: 16px; margin: 6px 0 5px; }
+  .flow .step p { font-size: 13.5px; color: var(--fg-dim); }
+  .flow .arrow { display: grid; place-items: center; color: var(--fg-faint); font-size: 18px; }
+  @media (max-width: 860px) { .flow .arrow { transform: rotate(90deg); } }
+
+  .footnote { margin-top: 22px; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--fg-faint); }
+  .khint { color: var(--fg-faint); font-size: 12.5px; font-family: "IBM Plex Mono", monospace; margin-top: 30px; }
+  .kbd { display: inline-block; border: 1px solid var(--line); background: var(--panel-2); border-radius: 5px; padding: 1px 7px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--fg-dim); }
+
+  /* Title slide flourish */
+  .hero-mark {
+    font-family: "IBM Plex Mono", monospace; color: var(--fg-faint); font-size: 13px;
+    letter-spacing: 1px; margin-top: 30px; display: flex; gap: 22px; flex-wrap: wrap;
+  }
+  .hero-mark span b { color: var(--amber); }
+  .bits { display: flex; gap: 5px; margin-bottom: 30px; font-family: "IBM Plex Mono", monospace; }
+  .bits i { width: 15px; height: 26px; border-radius: 3px; background: var(--panel-2); border: 1px solid var(--line); display: grid; place-items: center; font-style: normal; font-size: 12px; color: var(--fg-faint); }
+  .bits i.on { background: var(--amber); color: var(--ink); border-color: var(--amber); font-weight: 600; }
+  .bits i.err { background: var(--red); color: #fff; border-color: var(--red); }
+</style>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · TITLE -->
+  <section class="slide" aria-label="표지">
+    <div class="bits" aria-hidden="true">
+      <i class="on">1</i><i>0</i><i class="on">1</i><i class="on">1</i><i class="err">0</i><i>0</i><i class="on">1</i><i>0</i>
+    </div>
+    <div class="eyebrow">CUDA 코드 리딩 세미나</div>
+    <h1>MemtestG80<br />GPU 메모리를 <span class="amber">어떻게</span> 검증하는가</h1>
+    <p class="lead">ECC 없는 GPU에서 조용히 발생하는 비트 오류를, 수십만 스레드의 병렬성으로 잡아내는 오픈소스 하드웨어 메모리 테스터의 내부 구조를 코드로 따라 읽습니다.</p>
+    <div class="hero-mark">
+      <span><b>대상</b> memtestG80 (Stanford, 2009)</span>
+      <span><b>언어</b> CUDA C++ / LGPL v3</span>
+      <span><b>핵심 파일</b> memtestG80_core.cu</span>
+    </div>
+  </section>
+
+  <!-- 2 · WHY -->
+  <section class="slide" aria-label="왜 GPU 메모리를 테스트하는가">
+    <div class="eyebrow">문제 제기</div>
+    <h2>GPU는 <span class="k">조용히</span> 틀린다</h2>
+    <div class="cols split">
+      <div>
+        <ul class="clean">
+          <li>소비자용 GPU 대부분은 <strong>ECC(오류 정정)가 없다</strong> — 비트가 뒤집혀도 아무도 모른 채 잘못된 값이 계산에 섞인다.</li>
+          <li>오버클럭·발열·전압 마진 부족은 <strong>산발적(intermittent) 오류</strong>를 만든다. 평소엔 멀쩡하다가 특정 패턴에서만 실패한다.</li>
+          <li>GPGPU 연산(과학 계산, 렌더링, Folding@home)에서 한 비트의 오염이 <strong>결과 전체를 무의미</strong>하게 만들 수 있다.</li>
+          <li>CPU용 <code class="inline">Memtest86</code>는 있지만, GPU의 VRAM은 CPU에서 직접 두드릴 수 없다 — <strong>GPU 위에서 도는 테스터</strong>가 필요하다.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="tag">사례</span> 실전에서의 신호</h3>
+        <p>README는 말한다: "문제 있는 카드조차 <strong>5만 번에 한 번</strong> 꼴로만 실패할 수 있다."</p>
+        <p style="margin-top:14px">그래서 권장 사용법은 <strong class="amber">가능한 큰 영역을, 수천 번</strong> 반복하는 것. 메모리 테스트는 스트레스 테스트다 — 짧게 돌려서는 잡히지 않는다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · OVERVIEW -->
+  <section class="slide" aria-label="MemtestG80 개요">
+    <div class="eyebrow">한눈에</div>
+    <h2>MemtestG80이란</h2>
+    <p class="lead" style="margin-bottom:30px">Stanford의 Folding@home 팀이 만든, <strong>Memtest86의 메모리 테스트들을 CUDA 커널로 이식</strong>한 도구. 폐쇄형 버전의 오픈소스 에디션이다.</p>
+    <div class="grid3">
+      <div class="card">
+        <h3 class="teal">라이브러리 우선</h3>
+        <p>개발자가 자기 코드에 링크해 실행 전 GPU 건전성을 검증하도록 설계. 핵심 API는 <code class="inline">memtestG80_core.h</code>.</p>
+      </div>
+      <div class="card">
+        <h3 class="teal">+ CLI 프런트엔드</h3>
+        <p><code class="inline">memtestG80_cli.cu</code>는 라이브러리 사용 예제이자 독립 실행형 테스터. 13종 테스트를 순차 실행.</p>
+      </div>
+      <div class="card">
+        <h3 class="teal">이식성</h3>
+        <p>Linux 32/64, macOS, Windows용 Makefile 제공. 인자 파싱은 헤더 전용 <code class="inline">ezOptionParser</code>.</p>
+      </div>
+    </div>
+    <div class="cols two" style="margin-top:24px">
+      <div class="stat"><span class="n">1024 × 512</span><span class="l">기본 그리드 — 블록 × 스레드 = 524,288 스레드</span></div>
+      <div class="stat"><span class="n">2 MiB</span><span class="l">그리드당 N=1 word일 때 테스트되는 메모리 단위</span></div>
+    </div>
+  </section>
+
+  <!-- 4 · CUDA MODEL -->
+  <section class="slide" aria-label="CUDA 실행 모델">
+    <div class="eyebrow">배경 지식 · 30초</div>
+    <h2>CUDA 실행 모델, 딱 필요한 만큼</h2>
+    <div class="cols split">
+      <div>
+        <ul class="clean">
+          <li><strong>커널</strong>(<code class="inline">__global__</code>)은 <strong>grid</strong> 위에서 실행. grid는 <strong>block</strong>들로, block은 <strong>thread</strong>들로 구성된다.</li>
+          <li>각 스레드는 <code class="inline">blockIdx.x</code>, <code class="inline">threadIdx.x</code>, <code class="inline">blockDim.x</code>로 <strong>자기 위치</strong>를 안다 → 자기가 맡을 메모리 주소를 계산.</li>
+          <li>메모리 계층: <span class="amber">global</span>(VRAM, 테스트 대상) · <span class="teal">shared</span>(블록 내 공유, 빠름) · register(스레드 전용).</li>
+          <li>한 블록의 스레드들은 <code class="inline">__syncthreads()</code>로 동기화 가능 → <strong>병렬 리덕션</strong>의 열쇠.</li>
+        </ul>
+      </div>
+      <div class="code" data-file="실행 구성">
+<span class="c">// core.cu 상단 주석 — 의도된 사용법</span>
+grid  = <span class="num">1024</span> blocks
+block = <span class="num">512</span> threads
+       <span class="c">// N words(iterations) per thread</span>
+
+<span class="c">// 그리드당 테스트 용량:</span>
+<span class="num">1024</span> × <span class="num">512</span> × N × <span class="num">4</span>B = 2·N MiB
+      </div>
+    </div>
+    <p class="footnote">MemtestG80은 grid/block/thread를 <span class="amber">1차원 선형</span>으로만 쓴다 — 메모리는 결국 1차원 주소 공간이므로.</p>
+  </section>
+
+  <!-- 5 · ADDRESS MAPPING -->
+  <section class="slide" aria-label="메모리 주소 매핑">
+    <div class="eyebrow">핵심 메커니즘 ①</div>
+    <h2>스레드 → 주소 매핑</h2>
+    <div class="cols split">
+      <div class="code" data-file="memtestG80_core.cu:26">
+<span class="kw">#define</span> THREAD_ADDRESS(base, N, i) \
+   (base + blockIdx.x * N * blockDim.x
+         + i * blockDim.x
+         + threadIdx.x)
+      </div>
+      <div>
+        <p class="lead" style="margin-bottom:18px">모든 테스트의 심장. 스레드 <code class="inline">t</code>가 <code class="inline">i</code>번째 반복에 건드릴 word 주소를 계산한다.</p>
+        <ul class="clean">
+          <li><strong>인터리빙이 핵심</strong>: 같은 반복 <code class="inline">i</code>에서 이웃 스레드(<code class="inline">threadIdx.x</code>)는 <strong>이웃한 주소</strong>를 맡는다.</li>
+          <li>덕분에 워프의 32개 접근이 하나의 트랜잭션으로 묶이는 <strong class="teal">메모리 coalescing</strong>이 일어나 대역폭을 최대로 쓴다.</li>
+          <li>블록은 <code class="inline">N·blockDim.x</code> word씩 널찍이 떨어진 구역을 담당 → 전체 영역을 빈틈없이 덮는다.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · WRITE/VERIFY -->
+  <section class="slide" aria-label="테스트 기본 구조">
+    <div class="eyebrow">핵심 메커니즘 ②</div>
+    <h2>모든 테스트의 뼈대: <span class="k">쓰고 → 되읽는다</span></h2>
+    <div class="flow" style="margin-bottom:26px">
+      <div class="step"><div class="s">STEP 01</div><h4>패턴 쓰기</h4><p>알려진 비트 패턴을 테스트 영역 전체에 기록 (<code class="inline">deviceWriteConstant</code>)</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="s">STEP 02</div><h4>대기 / 반전</h4><p>필요 시 반복하거나 보수(complement) 패턴으로 덮어써 유지력을 시험</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="s">STEP 03</div><h4>되읽고 검증</h4><p>기대값과 비교해 <strong>틀린 비트 수</strong>를 집계 (<code class="inline">deviceVerifyConstant</code>)</p></div>
+    </div>
+    <div class="code" data-file="memtestG80_core.cu · deviceWriteConstant">
+<span class="kw">__global__</span> <span class="kw">void</span> <span class="fn">deviceWriteConstant</span>(uint* base, uint N, <span class="kw">const</span> uint constant) {
+    <span class="kw">for</span> (uint i = <span class="num">0</span>; i < N; i++)
+        *(THREAD_ADDRESS(base, N, i)) = constant;   <span class="c">// 각 스레드가 자기 word들을 채움</span>
+}
+    </div>
+  </section>
+
+  <!-- 7 · ERROR COUNTING -->
+  <section class="slide" aria-label="오류 카운팅">
+    <div class="eyebrow">핵심 메커니즘 ③ · 가장 영리한 부분</div>
+    <h2>오류를 세는 두 가지 묘수</h2>
+    <div class="cols two">
+      <div>
+        <div class="card" style="margin-bottom:18px">
+          <h3><span class="tag">묘수 1</span> 비트 단위 카운트</h3>
+          <p>단순히 "틀렸다/맞았다"가 아니라, <code class="inline">__popc(x ^ constant)</code>로 <strong class="amber">뒤집힌 비트의 개수</strong>를 센다. 한 word에서 여러 비트가 상해도 모두 포착.</p>
+        </div>
+        <div class="card">
+          <h3><span class="tag">묘수 2</span> 병렬 리덕션</h3>
+          <p>스레드별 오류 수를 shared memory에 모으고, <code class="inline">stride</code>를 반씩 줄이며 <strong>블록 안에서 합산</strong>. 블록 합만 호스트로 복사해 CPU가 최종 합(~1k개)을 더한다.</p>
+        </div>
+      </div>
+      <div class="code" data-file="deviceVerifyConstant">
+<span class="kw">extern</span> <span class="kw">__shared__</span> uint tErr[];
+tErr[threadIdx.x] = <span class="num">0</span>;
+
+<span class="kw">for</span> (uint i=<span class="num">0</span>; i<N; i++)
+   tErr[threadIdx.x] +=
+      BITSDIFF(*(THREAD_ADDRESS(base,N,i)), constant);
+      <span class="c">// BITSDIFF(x,y) = __popc((x)^(y))</span>
+
+<span class="c">// 블록 내 트리 리덕션</span>
+<span class="kw">for</span> (uint s=blockDim.x>><span class="num">1</span>; s><span class="num">0</span>; s>>=<span class="num">1</span>) {
+   <span class="fn">__syncthreads</span>();
+   <span class="kw">if</span> (threadIdx.x < s)
+      tErr[threadIdx.x] += tErr[threadIdx.x + s];
+}
+<span class="kw">if</span> (threadIdx.x==<span class="num">0</span>)
+   blockErrorCount[blockIdx.x] = tErr[<span class="num">0</span>];
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · CATALOGUE -->
+  <section class="slide" aria-label="테스트 카탈로그">
+    <div class="eyebrow">테스트 카탈로그</div>
+    <h2>한 iteration이 돌리는 <span class="k">13가지</span> 테스트</h2>
+    <div class="wrap-x">
+      <table class="tbl">
+        <thead><tr><th>테스트</th><th>계보</th><th>노리는 결함</th></tr></thead>
+        <tbody>
+          <tr><td>Moving Inversions (1/0)</td><td class="m">Memtest86 #2</td><td>인접 비트 간섭, stuck bit</td></tr>
+          <tr><td>Walking 8-bit (M86)</td><td class="m">Memtest86 #3</td><td>데이터 라인 단락</td></tr>
+          <tr><td>True Walking 8-bit (0/1)</td><td class="m">변형</td><td>주소·데이터 라인 결합 결함</td></tr>
+          <tr><td>Moving Inversions (random)</td><td class="m">Memtest86 #4</td><td>패턴 민감성 오류</td></tr>
+          <tr><td>Walking 32-bit (0/1)</td><td class="m">Memtest86 #6</td><td>전체 워드폭 데이터 라인</td></tr>
+          <tr><td>Random Blocks</td><td class="m">Memtest86 #7</td><td>무작위 패턴, 재현 검증</td></tr>
+          <tr><td>Modulo-20</td><td class="m">Memtest86 #8</td><td>주기적 주소 간섭</td></tr>
+          <tr><td>Logic / Short LCG</td><td class="m">고유</td><td>연산 로직 · 반복 카운트 오류</td></tr>
+          <tr><td>Logic (shared memory)</td><td class="m">고유</td><td>shared mem · 셰이더 오버클럭</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">각 walking 테스트는 shift를 8·32번 돌리므로, 실제 커널 실행 횟수는 표의 행 수보다 훨씬 많다.</p>
+  </section>
+
+  <!-- 9 · MOVING INVERSIONS -->
+  <section class="slide" aria-label="Moving Inversions">
+    <div class="eyebrow">테스트 심화 ①</div>
+    <h2>Moving Inversions</h2>
+    <div class="cols split">
+      <div>
+        <p class="lead" style="margin-bottom:18px">가장 고전적인 메모리 테스트. <strong>패턴을 쓰고 → 검증 → 보수 패턴으로 덮고 → 다시 검증</strong>.</p>
+        <ul class="clean">
+          <li><strong>ones/zeros</strong>: <code class="inline">0xFFFFFFFF</code>를 쓰고 확인한 뒤, <code class="inline">0x0</code>으로 반전해 다시 확인.</li>
+          <li>모든 셀이 <strong class="amber">1과 0을 모두 안정적으로 저장</strong>하는지, 그리고 이웃이 값을 오염시키지 않는지 검증.</li>
+          <li><strong>random</strong> 변형은 상수 대신 난수 패턴을 써서 특정 값에 의존한 결함을 노린다.</li>
+        </ul>
+      </div>
+      <div class="code" data-file="gpuMovingInversionsOnesZeros">
+gpuWriteConstant (..., <span class="num">0xFFFFFFFF</span>);
+err  = gpuVerifyConstant(..., <span class="num">0xFFFFFFFF</span>);
+
+gpuWriteConstant (..., <span class="num">0x0</span>);
+err += gpuVerifyConstant(..., <span class="num">0x0</span>);
+
+<span class="kw">return</span> err;   <span class="c">// 두 위상의 오류 합</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · WALKING BITS -->
+  <section class="slide" aria-label="Walking bits">
+    <div class="eyebrow">테스트 심화 ②</div>
+    <h2>Walking Bits</h2>
+    <div class="grid3">
+      <div class="card">
+        <h3 class="teal">M86 Walking 8-bit</h3>
+        <p>한 비트만 켠 8비트 패턴(<code class="inline">1&lt;&lt;shift</code>)을 32비트로 복제해 전 영역에 동일하게 기록·검증하고, 보수도 검증. shift를 0~7 반복.</p>
+      </div>
+      <div class="card">
+        <h3 class="teal">True Walking 8-bit</h3>
+        <p>워드 안에서 켜진 비트가 <strong>실제로 이동</strong>하도록 페어 패턴을 구성. 인접 워드 간 데이터·주소 라인 결합 결함에 더 민감.</p>
+      </div>
+      <div class="card">
+        <h3 class="teal">Walking 32-bit</h3>
+        <p>32비트 전 폭에 걸쳐 단일 비트를 이동시키며(shift 0~31) 각 데이터 라인을 독립적으로 자극.</p>
+      </div>
+    </div>
+    <div class="code" data-file="gpuWalking8BitM86 · 패턴 생성" style="margin-top:22px">
+shift &= <span class="num">0x7</span>;
+uint pattern = <span class="num">1</span> << shift;
+pattern = pattern | (pattern<<<span class="num">8</span>) | (pattern<<<span class="num">16</span>) | (pattern<<<span class="num">24</span>);  <span class="c">// 8비트를 워드 전체로 복제</span>
+    </div>
+  </section>
+
+  <!-- 11 · RANDOM & MODULO -->
+  <section class="slide" aria-label="Random blocks와 Modulo-20">
+    <div class="eyebrow">테스트 심화 ③</div>
+    <h2>Random Blocks &amp; Modulo-20</h2>
+    <div class="cols two">
+      <div class="card">
+        <h3><span class="tag">#7</span> Random Blocks</h3>
+        <p style="margin-bottom:12px">호스트의 <code class="inline">rand()</code> 시드로 각 블록에 <strong>재현 가능한 난수</strong>를 채운다. 쓸 때와 검증할 때 <strong class="amber">같은 시드</strong>로 같은 수열을 재생성해 비교.</p>
+        <p>구조화된 패턴이 놓치는, 데이터 의존적 결함을 잡는다.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag">#8</span> Modulo-20</h3>
+        <p style="margin-bottom:12px">20개 word마다 한 번씩 패턴을 배치하고 나머지는 보수로 채운 뒤, shift를 0~19로 돌린다.</p>
+        <p><strong>주기적 주소 간섭</strong> — 특정 간격의 셀들이 서로 영향을 주는 결함을 표적한다.</p>
+      </div>
+    </div>
+    <p class="footnote">두 테스트 모두 매 iteration마다 새 <code class="inline">rand()</code> 값을 받아 실행마다 다른 데이터로 커버리지를 넓힌다.</p>
+  </section>
+
+  <!-- 12 · LOGIC / LCG -->
+  <section class="slide" aria-label="Logic 테스트">
+    <div class="eyebrow">테스트 심화 ④ · 메모리가 아니라 연산을 본다</div>
+    <h2>Logic Test — Short LCG</h2>
+    <div class="cols split">
+      <div>
+        <ul class="clean">
+          <li>다른 테스트가 <strong>저장</strong>을 본다면, 이건 <strong class="amber">ALU와 반복 제어</strong>를 본다 — 짧은 주기의 선형합동생성기(LCG)를 <code class="inline">k·period</code>번 돌린다.</li>
+          <li>주기 후 값은 항상 <strong>0으로 되돌아오도록</strong> 설계 → 결과를 0과 비교. 반복 횟수 k가 달라도 결과는 같아야 하므로, 차이가 나면 <strong>로직 오류</strong>.</li>
+          <li>짝 XOR(<code class="inline">^0xFFFFFFF0 ^0xF</code>)로 명령 스트림에 다양성을 준다 — 단일 XOR처럼 NOT으로 최적화돼 사라지지 않게(decuda로 검증).</li>
+          <li><strong>shmem 버전</strong>은 중간값을 shared memory에 둬서 <strong class="teal">셰이더 오버클럭</strong>발 shared-mem 오류에 더 민감.</li>
+        </ul>
+      </div>
+      <div class="code" data-file="LCGLOOP 매크로">
+<span class="kw">for</span> (rep = <span class="num">0</span>; rep < repeats; rep++) {
+  value = ~value;
+  <span class="c">#pragma unroll 1</span>
+  <span class="kw">for</span> (iter=<span class="num">0</span>; iter<period; iter++) {
+    value = ~value;
+    value = a*value + c;      <span class="c">// LCG 스텝</span>
+    value ^= <span class="num">0xFFFFFFF0</span>;
+    value ^= <span class="num">0xF</span>;          <span class="c">// 짝 XOR</span>
+  }
+  value = ~value;
+}
+<span class="c">// 끝나면 value는 0 이어야 정상</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 · BANDWIDTH -->
+  <section class="slide" aria-label="대역폭 측정">
+    <div class="eyebrow">부가 기능</div>
+    <h2>메모리 대역폭 측정</h2>
+    <div class="cols split">
+      <div>
+        <p class="lead" style="margin-bottom:18px">테스트 전, 디바이스 내부 <strong>device-to-device 복사</strong>를 반복해 실효 대역폭을 잰다.</p>
+        <ul class="clean">
+          <li>D2D <code class="inline">cudaMemcpy</code>는 <strong>비동기</strong>라 <code class="inline">cudaThreadSynchronize()</code>로 반드시 동기화 후 시간을 재야 정확.</li>
+          <li>읽기 + 쓰기 둘 다 일어나므로 대역폭에 <strong class="amber">×2</strong>를 곱한다.</li>
+          <li>기대치보다 크게 낮으면 그 자체가 하드웨어/드라이버 이상 신호.</li>
+        </ul>
+      </div>
+      <div class="code" data-file="gpuMemoryBandwidth">
+<span class="kw">for</span> (i=<span class="num">0</span>; i<iters; i++)
+   <span class="fn">cudaMemcpy</span>(dst, src, bytes, D2D);
+
+<span class="fn">cudaThreadSynchronize</span>();   <span class="c">// 정확한 타이밍</span>
+
+<span class="c">// 읽고 쓰므로 ×2</span>
+bw = <span class="num">2.0</span> * mbToTest*iters / seconds;
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 · ARCHITECTURE -->
+  <section class="slide" aria-label="API 아키텍처">
+    <div class="eyebrow">코드 구조</div>
+    <h2>3계층 API 설계</h2>
+    <div class="flow" style="margin-bottom:24px">
+      <div class="step">
+        <div class="s">LAYER 03 · 사용자 권장</div>
+        <h4>memtestState 클래스</h4>
+        <p>OO 인터페이스. <code class="inline">allocate()</code>가 메모리·임시버퍼를 잡고, 각 <code class="inline">gpuXxx()</code> 메서드가 성공/실패 bool 반환. CLI가 쓰는 층.</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="s">LAYER 02</div>
+        <h4><code class="inline">__host__</code> gpuXxx 함수</h4>
+        <p>커널 실행 + 동기화 + 오류 리덕션을 묶은 저수준 C API. 헤더에 공개.</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="s">LAYER 01</div>
+        <h4><code class="inline">__global__</code> deviceXxx 커널</h4>
+        <p>GPU에서 실제로 도는 테스트 본체. 내부 전용.</p>
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="pill"><span class="dot"></span>gpuXxx / cpuXxx = 사용자 접근</div>
+      <div class="pill warn"><span class="dot"></span>deviceXxx = 내부 커널</div>
+      <div class="pill"><span class="dot"></span>SOFTWAIT() = 스핀 대신 슬립 폴링</div>
+    </div>
+    <p class="footnote">에러 코드 관례: <code class="inline">0xFFFFFFFF</code>=런치 실패, <code class="inline">0xFFFFFFFE</code>=타임아웃. 4억을 넘는 "오류 수"는 진짜 오류가 아니라 이 센티넬이다.</p>
+  </section>
+
+  <!-- 15 · USAGE -->
+  <section class="slide" aria-label="사용법과 결과 해석">
+    <div class="eyebrow">실전</div>
+    <h2>돌리는 법 · <span class="k">읽는 법</span></h2>
+    <div class="cols split">
+      <div>
+        <div class="code" data-file="shell" style="margin-bottom:18px">
+<span class="c"># 기본: GPU 0, 128MB, 50 iters</span>
+memtestG80
+
+<span class="c"># 256MB를 100회, 3번째 GPU에서</span>
+memtestG80 --gpu 2 <span class="num">256</span> <span class="num">100</span>
+        </div>
+        <ul class="clean">
+          <li>테스트 영역은 <strong>2MB 단위로 반올림</strong>. VRAM 전부는 못 쓴다(OS 예약분).</li>
+          <li>종료 코드는 누적 오류 수가 0이 아니면 <strong>non-zero</strong> → 스크립트 연동 쉬움.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h3><span class="tag">해석</span> 40억 개 오류?</h3>
+          <p>디스플레이를 구동 중인 GPU는 드라이버 <strong>워치독 타임아웃</strong>이 걸릴 수 있다. 오류 수가 <strong class="red">40억을 넘으면</strong> 실제 결함이 아니라 타임아웃 — 영역을 줄이면 사라진다.</p>
+        </div>
+        <div class="card">
+          <h3><span class="tag">원칙</span> 오래, 크게</h3>
+          <p>안정성 검증은 스트레스 테스트다. 의심되면 <strong class="amber">가능한 큰 영역을 수천 회</strong> — 산발적 결함은 그래야 드러난다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 · TAKEAWAYS -->
+  <section class="slide" aria-label="정리">
+    <div class="eyebrow">정리</div>
+    <h2>핵심 세 가지</h2>
+    <div class="grid3" style="margin-bottom:12px">
+      <div class="card">
+        <h3><span class="amber" style="font-family:'IBM Plex Mono';font-size:20px">01</span></h3>
+        <p><strong>검증된 알고리즘의 병렬 이식.</strong> Memtest86의 시간 검증된 테스트들을, 수십만 스레드로 VRAM을 동시에 두드리도록 CUDA로 옮겼다.</p>
+      </div>
+      <div class="card">
+        <h3><span class="amber" style="font-family:'IBM Plex Mono';font-size:20px">02</span></h3>
+        <p><strong>단순한 원리, 영리한 디테일.</strong> "쓰고 되읽기"라는 뼈대 위에, <code class="inline">__popc</code> 비트 카운트와 병렬 리덕션이 성능과 정확도를 만든다.</p>
+      </div>
+      <div class="card">
+        <h3><span class="amber" style="font-family:'IBM Plex Mono';font-size:20px">03</span></h3>
+        <p><strong>메모리 + 로직 둘 다.</strong> 저장뿐 아니라 LCG로 ALU·반복 제어까지 시험 — 오버클럭 안정성 검증에 유효하다.</p>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:22px">읽을 순서 제안: <code class="inline">memtestG80_cli.cu</code>의 메인 루프 → <code class="inline">core.cu</code>의 <code class="inline">THREAD_ADDRESS</code> → <code class="inline">deviceVerifyConstant</code>의 리덕션. 이 세 곳이 전체를 관통한다.</p>
+    <p class="khint">감사합니다 · 질문 환영 &nbsp;/&nbsp; 이동: <span class="kbd">←</span> <span class="kbd">→</span> <span class="kbd">Space</span> · 처음으로 <span class="kbd">Home</span></p>
+  </section>
+
+</div>
+
+<!-- Navigation UI -->
+<nav class="nav" aria-hidden="false">
+  <button class="navbtn" id="prev" aria-label="이전 슬라이드">‹</button>
+  <button class="navbtn" id="next" aria-label="다음 슬라이드">›</button>
+</nav>
+
+<div class="rail">
+  <span class="brand">MemtestG80<b> // 심층 분석</b></span>
+  <div class="progress"><span id="bar"></span></div>
+  <div class="dots" id="dots" role="tablist" aria-label="슬라이드 목록"></div>
+  <span class="counter"><b id="cur">1</b> / <span id="total">16</span></span>
+</div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var n = slides.length;
+  var i = 0;
+  var bar = document.getElementById('bar');
+  var cur = document.getElementById('cur');
+  var dotsWrap = document.getElementById('dots');
+  document.getElementById('total').textContent = n;
+
+  // build dots
+  slides.forEach(function (s, idx) {
+    var b = document.createElement('button');
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-label', '슬라이드 ' + (idx + 1));
+    b.addEventListener('click', function () { go(idx); });
+    dotsWrap.appendChild(b);
+  });
+  var dots = Array.prototype.slice.call(dotsWrap.children);
+
+  function render() {
+    slides.forEach(function (s, idx) { s.classList.toggle('active', idx === i); });
+    dots.forEach(function (d, idx) { d.setAttribute('aria-current', idx === i ? 'true' : 'false'); });
+    bar.style.width = ((i + 1) / n * 100) + '%';
+    cur.textContent = (i + 1);
+    try { history.replaceState(null, '', '#' + (i + 1)); } catch (e) {}
+    var active = slides[i]; if (active) active.scrollTop = 0;
+  }
+  function go(idx) { i = Math.max(0, Math.min(n - 1, idx)); render(); }
+  function next() { go(i + 1); }
+  function prev() { go(i - 1); }
+
+  document.getElementById('next').addEventListener('click', next);
+  document.getElementById('prev').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { e.preventDefault(); go(0); }
+    else if (e.key === 'End') { e.preventDefault(); go(n - 1); }
+  });
+
+  // swipe (touch)
+  var x0 = null;
+  document.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+    x0 = null;
+  }, { passive: true });
+
+  // deep-link via hash
+  var start = parseInt((location.hash || '').replace('#', ''), 10);
+  if (!isNaN(start) && start >= 1 && start <= n) i = start - 1;
+  render();
+})();
+</script>

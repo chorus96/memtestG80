@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <title>VI. 분석 · VII. 결론 · 참고문헌</title>
+  <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+</head>
+<body>
+  <h1>VI. 분석</h1>
+  <p>이 절에서는 결과의 특징을 설명하는 여러 가설을 탐구하며, 결과를 테스트별·시험 카드의 속성별로 분해한다. 주로 적용하는
+  통계 방법은 두 확률 분포 사이의 상호정보량(mutual information) 검토와, 데이터 분할 속성에 대한 정보 이득(information gain)
+  기준이다. 통속적으로 말하면, 두 분포 사이의 상호정보량은 둘 사이 상관의 비선형 척도이며, 어떤 속성의 정보 이득은 그
+  속성이 설명하는 기저 분포의 변동량을 측정한다. 이 기법들은 통계 문헌에서 잘 알려져 있다.</p>
+
+  <h2>VI-A. 정보 이득에 의한 가설 검정</h2>
+  <p>가설을 검정하기 위해, 데이터 마이닝에서 결정 트리 모델 구성의 휴리스틱 기준으로 널리 쓰이는 정보 이득 척도를
+  적용한다. 가설 검정 문제는 다음과 같이 정식화된다. 라벨이 붙은 데이터셋 D가 주어질 때, 지시 변수 V에 따라 D를 여러 부분집합
+  D<sub>1</sub>, D<sub>2</sub>, ⋯, D<sub>|V|</sub>로 분할한다. 우리는 V가 D의 변동을 설명하는 데 얼마나 좋은지 알고 싶다.</p>
+  <p>D와 그 각 부분집합의 "변동"은 각각의 섀넌 엔트로피 H(D)로 측정하며, 이는 H(D) = −Σ<sub>x∈D</sub> p(x) log<sub>2</sub>
+  p(x)로 정의된다. V로부터 D에 대한 정보 이득 I(D;V)(D와 V 사이의 상호정보량이라고도 함)는
+  I(D;V) = H(D) − H(D|V) = H(D) − Σ<sub>v∈V</sub> H(D<sub>v</sub>)P(V=v)로 정의된다. I(D;V)가 H(D)에 비해 크면, V는
+  D 분포의 상당 부분을 설명한다. 가설 검정에서 확률 분포 D를 추정하기 위해, 그림 3(a)의 각 분포처럼 카드 단위로 실패 확률을
+  히스토그램화하되 0부터 1까지 전 범위에 걸쳐 수행했다.</p>
+
+  <h2>VI-B. P(fail)의 쌍봉성</h2>
+  <p>그림 3(b)에 나타난 카드 실패 확률의 쌍봉 분포는 자연스러운 질문을 던진다. 0이 아닌 실패 확률을 가진 카드의 존재가
+  단순한 구조적·환경적 변수로 쉽게 설명되는가, 아니면 보드 집단에 내재된 것인가? 이에 답하기 위해 우리는 명백한 가설
+  집합 — 실패가 오버클럭 때문이다, 열 문제로 발생한다, 또는 하드웨어의 아키텍처적 변동을 반영한다 — 을 데이터셋에서
+  검정했다. 참고로, 이 데이터셋의 완벽한 지시 변수(데이터를 한 번도 실패하지 않은 카드와 실패한 카드로 나누는 변수)의 정보
+  이득 I(D;V)는 <strong>0.8896 비트</strong>다.</p>
+
+  <p><strong>1) 셰이더 오버클럭:</strong> 셰이더 오버클럭 카드가 P(fail)=2×10<sup>−5</sup> 부근의 두 번째 모드를 유발하는지
+  검정하기 위해, D를 오버클럭 상태를 아는 모든 카드로 두고 이를 정격과 오버클럭으로 분할했다. D의 엔트로피는 6.184 비트로
+  계산되었고, D와 정격/오버클럭 지시 변수 사이의 상호정보량은 7.5×10<sup>−2</sup> 비트였다. 이 분할의 I(D;V)는 완벽한 지시
+  변수보다 훨씬 낮아, 오버클럭 상태가 분포의 정보를 거의 설명하지 못함을 나타낸다. 따라서 오버클럭이 쌍봉성의 원인일
+  가능성은 낮다.</p>
+
+  <p><strong>2) 하루 중 시각:</strong> 높은 온도는 전자 소자에서 일시적 오류의 알려진 원인이다. MemtestG80이 쓰는 API로는
+  보드 온도를 측정할 수 없지만, Folding@home이 기증자 프로젝트라는 점은 대부분의 시험 보드가 기계실처럼 온도가 엄격히
+  통제된 환경에 있지 않음을 시사한다. 우리는 추정 시험 실행 시간, 결과 수신 시각, IP 지리위치 데이터를 결합해 시험이 실행된
+  현지 시각을 추정했다. 주변 온도가 현지 시각에 따라 변동한다고 가정하고, 하루 중 시각이 오류 분포의 형태를 좌우한다는
+  가설을 검정했다. "낮"을 오전 6시~오후 6시, "밤"을 오후 6시~오전 6시(현지 기준)로 정의하고, 낮 또는 밤에 시작·종료한
+  모든 시험을 D로 두어 낮에만 실행된 시험과 밤에만 실행된 시험으로 나누었다. 이 가설의 정보 이득은 <strong>0.0413 비트</strong>로,
+  오류 분포의 형태를 설명하는 데 극히 빈약하다. 따라서 현지 시각은 오류율에 대한 적절한 설명이 아니다.</p>
+
+  <p><strong>3) 보드 아키텍처:</strong> NVIDIA의 GT200 계열 GPU는 원래의 G80/G92 GPU보다 진보한 메모리 컨트롤러를 가지며,
+  (재설계된 다른 기능들과 함께) 추가적인 메모리 병합(coalescing) 모드를 지원한다. 이 아키텍처 변화가 쌍봉성의 원인인지
+  검정하기 위해, D를 모든 GeForce 그래픽 카드로 두고 GT200 기반과 비-GT200 기반 보드로 분할했다. 이 지시 변수의 I(D;V)는
+  <strong>0.453 비트</strong>로, 완벽한 지시 변수에서 얻는 정보의 큰 비율을 차지한다. 따라서 이 분할이 우리가 관찰하는 오류
+  분포를 유의하게 설명할 가능성이 크다.</p>
+
+  <figure>
+    <img src="../images/fig4.png" alt="아키텍처별(G80 빨강, GT200 파랑) 카드 실패 확률의 경험적 CDF 그래프"/>
+    <figcaption>그림 4. 여러 테스트-이터레이션 수 임계값에서 아키텍처별 카드 실패 확률의 경험적 CDF
+    (G80/G92는 빨강, GT200은 파랑).</figcaption>
+  </figure>
+
+  <p>그림 4는 GT200 기반 보드(이터레이션 임계값에 따라 데이터셋의 약 5분의 1에서 4분의 1)가 MemtestG80 이터레이션에 훨씬
+  덜 실패했음을 보여준다. 이터레이션 임계값과 무관하게 GT200 기반 카드의 약 <strong>90%</strong>가 오류를 한 번도 보고하지
+  않았다. 오류를 내는 GT200 기반 보드 집단은 실패 확률 2.2×10<sup>−6</sup> 부근에 몰리는데, 이는 전체 데이터셋의 최빈 실패
+  확률보다 한 자릿수 낮다.</p>
+
+  <p><strong>4) 쌍봉성 결론:</strong> 우리의 데이터는 실패 확률 분포의 쌍봉 구조가 시험한 보드의 서로 다른 아키텍처에
+  기인함을 시사한다. 구체적으로 신형 GT200 아키텍처는 G80보다 소프트 오류율이 거의 10배 낮은 것으로 보인다. G80 대비
+  GT200 메모리 컨트롤러의 가장 뚜렷한 사용자 가시적 개선은 메모리 연산 병합, 즉 여러 메모리 읽기·쓰기를 단일 트랜잭션으로
+  결합하는 지원의 향상이다. 그러나 이 지원만으로는 오류율의 변화를 설명하기에 불충분하다. 두 아키텍처의 메모리 병합 지침을
+  이용해 (가장 민감한 테스트인) 모듈로-20 테스트에 대해 G80과 GT200의 메모리 접근 패턴을 시뮬레이션했다. Folding@home의
+  MemtestG80처럼, 모듈로-20 테스트는 두 아키텍처에서 같은 수의 트랜잭션을 실행한다. 그러나 GT200은 (바이트 기준으로)
+  트랜잭션을 더 작게 줄일 수 있다. 그 결과 G80은 이 테스트에서 GT200보다 (트랜잭션이 아니라 바이트 기준으로)
+  <strong>16.7% 더 많은 메모리 트래픽</strong>을 발생시킨다. 이것만으로는 GT200의 10배 오류 확률 감소를 설명하지 못하는
+  것으로 보인다.</p>
+
+  <h2>VI-C. 오류가 분자동역학에 미치는 영향</h2>
+  <p>메모리 오류가 과학 계산에 영향을 주는지 평가하기 위해, 주어진 카드가 Folding@home 작업 단위에서 메모리 오류를 낼 확률과,
+  같은 카드가 "조기 단위 종료(EUE)"(시뮬레이션 실패)를 유발할 확률 사이의 상호정보량을 조사했다. MemtestG80 이터레이션이
+  최소 한 번 실행된 작업 단위만 계수했을 때, MemtestG80 오류와 Folding@home EUE 사이의 상호정보량은 0.131 비트였고, 메모리
+  오류와 EUE 분포의 전체 엔트로피는 각각 1.965비트, 1.018비트였다. 이는 MemtestG80 오류가 EUE와 잘 상관하지 않을 가능성이
+  큼을 나타낸다. 다만 우리는 이 척도가 시뮬레이션에 대한 실제 영향을 과소보고한다고 본다. EUE는 (부적절한 시뮬레이션 설정을
+  포함해) 보드 오류와 무관할 수 있는 다양한 원인을 가지며, 사용된 Folding@home 클라이언트 설계상 특정 시뮬레이션 오류는
+  서버에 보고·기록되지 않았기 때문이다. 따라서 관찰된 오류가 과학 시뮬레이션에 미치는 실제 영향에 대해서는 결론을 내릴 수
+  없다.</p>
+
+  <h2>VI-D. 테스트의 고장 모드</h2>
+  <p>MemtestG80 이터레이션을 구성하는 각 개별 테스트 결과 사이의 상호정보량을 조사하면, 다양한 조건에서 고장을 유발하는
+  메커니즘을 더 잘 이해할 수 있다. 그림 5(원문)는 MemtestG80의 모든 테스트 쌍 X, Y에 대해 I(X;Y)/H(X) 비율을 보여준다.
+  MemtestG80 내 테스트를 가리키는 데 다음 약호를 쓴다.</p>
+
+  <figure>
+    <img src="../images/fig5.png" alt="각 테스트 쌍의 상호정보량 대 엔트로피 비율 히트맵"/>
+    <figcaption>그림 5. 각 테스트 쌍의 상호정보량 대 엔트로피 비율. 각 항목은 해당 열의 테스트가 가진 엔트로피 중
+    해당 행의 테스트가 설명하는 비율이다. 밝은 칸일수록 설명되는 테스트의 분산이 설명자 테스트로 더 많이 설명됨을
+    뜻한다. 테스트 약호는 아래 목록 참조.</figcaption>
+  </figure>
+
+  <ul class="error-list">
+    <li><span class="node">MI10</span> 이동 반전, 1과 0. 전부-1·전부-0 상수 패턴을 메모리에 씀.</li>
+    <li><span class="node">MIR</span> 이동 반전, 무작위. 호스트가 고른 의사난수 상수를 메모리에 씀.</li>
+    <li><span class="node">1WM</span> Memtest86 변형의 워킹 1바이트 패턴.</li>
+    <li><span class="node">1W0/1</span> 참 워킹 0/1 패턴, 1바이트 폭.</li>
+    <li><span class="node">4W0/1</span> 참 워킹 0/1 패턴, 4바이트 폭.</li>
+    <li><span class="node">RB</span> 무작위 블록. 각 메모리 블록에 (GPU에서 생성한) 서로 다른 의사난수를 씀.</li>
+    <li><span class="node">M20</span> 모듈로-20 테스트(III-C절 참조).</li>
+    <li><span class="node">L, L4</span> 로직 테스트, LCG 주기를 1회 또는 4회 통과.</li>
+    <li><span class="node">LS(4)</span> L/L4와 같으나 중간 LCG 상태를 레지스터가 아닌 공유 메모리에 저장.</li>
+  </ul>
+  <p>이 데이터에서 몇 가지 흥미로운 경향이 나타난다.</p>
+  <p><strong>1) 모듈로-20 테스트는 독자적이다.</strong> M20 열과 행 모두 값이 작아, 모듈로-20 테스트가 다른 어떤 테스트와도
+  거의 공변하지 않음을 나타낸다. 이는 다른 테스트 대비 높은 민감성 때문일 가능성이 크며, 모듈로-20이 다른 테스트와는 다른
+  고장 메커니즘을 탐색한다는 관념을 강화한다.</p>
+  <p><strong>2) 무작위 블록 테스트는 좋은 로직 테스트다.</strong> 로직 테스트로 의도되지 않았음에도, RB 행에서 LCG 기반 로직
+  테스트에 해당하는 열의 큰 값들은 RB가 LCG 테스트가 측정하는 오류를 잘 포착함을 나타낸다. 반대로 LCG 테스트에 대한 RB
+  열의 작은 값들은 RB가 LCG 테스트 대비 오류의 상위집합을 측정함을 보여준다. 이는 RB 테스트가 셰이더 로직 집약적이기
+  때문으로, 우리는 이를 다중스레드·다중코어 Park–Miller 최소 표준 의사난수 생성기를 중심으로 설계했으며, 각 메모리 위치에
+  새 난수를 생성하는 과정에서 다른 어떤 테스트보다 훨씬 많은 로직 연산을 수행한다.</p>
+  <p><strong>3) 로직 테스트는 대부분의 메모리 테스트와 구별되는 고장 모드를 측정한다.</strong> 로직 테스트의 4회 반복 변형
+  (L4, LS4)은 대부분의 메모리 테스트로 잘 설명되지 않으며, 특히 1회 반복 대응물(L, LS)보다 메모리 테스트로 덜 설명된다.
+  이는 예상되는 바로, 1회 반복 변형이 메모리 오류에 더 영향을 받기 때문이다. 그러나 상호정보량 그림 우하단의 밝은 블록은
+  로직 테스트들이 자기들끼리 강하게 공변함을 보여준다. 나아가 메모리 테스트는 LS4보다 L4에 대해 더 높은 상호정보량을
+  가지며, 이는 로직 테스트에서 공유 메모리 사용이 유의한 변수임을 나타낸다. 종합하면, 로직 테스트는 메모리 테스트에서
+  시험하는 것과 구별되는 고장 모드를 검출하며, 겉보기 로직 오류가 GPU 상 공유 메모리의 소프트 오류로 유발될 수 있음을
+  보여준다.</p>
+
+  <h1>VII. 결론</h1>
+  <p>우리는 Folding@home 분산 컴퓨팅 네트워크의 2만 개가 넘는 GPU에서 수행한, GPGPU 하드웨어 오류율에 관한 최초의 대규모
+  연구를 제시했다. 통제된 환경의 소비자용·GPGPU 전용 하드웨어 대조 실험에서는 오류가 발견되지 않았다. 그러나 대규모 실험
+  결과는 시험한 카드의 약 3분의 2가 GPU 메모리 또는 로직에서 패턴에 민감한 소프트 오류 감수성을 보였음을 보여주며, 이는
+  GPGPU 연산을 위한 설치된 GPU 기반의 신뢰성에 대한 우려를 확인한다. 나아가 이 0이 아닌 오류율은 오버클럭이나 (주변
+  온도의 대리 지표인) 실행 시각으로는 충분히 설명되지 않음을 보였다. 그러나 GPU 아키텍처와는 강하게 상관하는 것으로 보이며,
+  신형 GT200 GPU 기반 보드가 구형 G80/G92 설계 기반 보드보다 훨씬 낮은 오류율을 가졌다. 사용자 오류, Folding@home 기증자의
+  잘못된 설정, 또는 환경 효과를 원인에서 배제할 수는 없으나, 우리의 결과는 GPGPU가 정상 조건에서도 무시할 수 없는
+  시간 규모에 걸쳐 소프트 오류에 취약함을 강하게 시사한다.</p>
+
+  <p>음성 대조 결과는 환경 통제와 GPGPU 전용 하드웨어를 사용하면 GPGPU가 신뢰성 있을 수 있음을 시사한다(결정적으로 증명하지는
+  않음). 그러나 실험 결과는 실제 환경에 설치된 소비자 수준 하드웨어 상 GPGPU의 신뢰성에 대한 우려를 제기한다. 이 데이터는
+  GPU 기반 분산 컴퓨팅 응용과, 최근의 영상 인코딩 응용처럼 GPU 가속에 의존하는 소비자 대상 소프트웨어 공급자 모두에게 특히
+  관련이 깊다. 우리의 데이터는 NVIDIA GPU에서만 수집되었으나, ATI·Intel·Via 등 다른 제조사의 GPU에서도 신뢰성 양상이 크게
+  다르리라고 볼 근거는 없음을 강조한다. 지금까지 GPU 개발의 원동력이 GPGPU 응용에서 요구되는 엄격한 신뢰성 우려를 강조하지
+  않았기 때문이다.</p>
+
+  <p><strong>GPGPU 전용 하드웨어가 답인가?</strong> 우리의 표본으로는 프로페셔널·GPGPU 전용 보드가 소비자 GPU보다 유의하게
+  신뢰성이 높은지 충분히 답할 수 없다. 다만 음성 대조 실험(III-C절) 결과는 Tesla 계열이 실제로 소비자 하드웨어보다 신뢰성이
+  높을 수 있음을 시사한다. 대조 실험 과정에서 우리는 8개 Tesla 보드에 걸쳐 약 148만 회의 MemtestG80 이터레이션을 축적했다.
+  각 시험이 Folding@home MemtestG80 이터레이션의 전형적 시험 메모리 양의 5배 이상을 대상으로 했으므로, 대조 실험은 약 740만
+  회의 Folding@home 테스터 이터레이션, 즉 카드당 92만 5천 회 이상에 해당한다. 메모리 오류도 로직 오류도 전혀 관찰되지
+  않았다. Folding@home 데이터셋에서 오류-0 카드일 경험적 확률이 약 3분의 1이므로, 우리의 대조 Tesla 카드들이 같은 분포에서
+  독립적으로 뽑혔을 확률은 (1/3)<sup>8</sup>, 즉 0.01% 미만이다(G80만의 데이터셋에서 뽑혔다면 더욱 낮다). 이는 Tesla 계열이
+  실제로 소비자 등급 하드웨어보다 신뢰성이 높음을 시사한다.</p>
+
+  <p><strong>무엇을 할 수 있는가?</strong> 소프트웨어 개발자를 위한 명백한 첫 단계는 MemtestG80에 있는 것과 같은 능동적
+  메모리 테스트 기능을 통합해 오작동하는 카드를 선제적으로 검출하는 것이다. 하드웨어 측면에서는 메모리 서브시스템에 패리티나
+  ECC 기능을 추가하면 메모리 유발 무증상 오류를 막을 수 있다. GDDR5 사양에 부분 ECC가 추가된 것은 첫걸음이지만, 종단간
+  시스템이 아니며 메모리 컨트롤러나 RAM 자체의 오류는 막지 못한다. 메모리 테스트와 ECC가 GPU 메모리 오류를 막을 수 있지만,
+  우리의 로직 테스트는 GPU 자체의 일시적 오류 또한 고려해야 함을 나타낸다. 이런 결함 원인에 대응하려면 중복 계산, 고급
+  소프트웨어 오류 검출, 하드웨어 중복 같은 조치의 구현이 필요할 수 있다. 그럼에도 우리의 데이터는 소비자 등급 하드웨어에서
+  신뢰성 있는 GPGPU 연산이 분명히 가능하되, 그러려면 하드웨어 특성에 세심한 주의가 필요함을 보여준다. 단일 보드에서
+  TFLOP급 연산이라는 커다란 힘에는, 데이터 무결성을 보장할 개발자의 커다란 책임이 따른다.</p>
+
+  <h2>감사의 글</h2>
+  <p>무엇보다 기증된 컴퓨터 시간이 없었다면 이 연구가 불가능했을 Folding@home 네트워크의 모든 기증자에게 감사한다. 소프트
+  오류 검출·정정 메커니즘을 논의해 준 IBM의 Paul Coteus 박사, GPU 아키텍처와 반복 로직 테스터 아이디어를 논의해 준
+  스탠퍼드의 Ewen Cheslack-Postava, 그리고 원고에 유익한 의견을 준 Adam Beberg, Ewen Cheslack-Postava, Philip Guo,
+  Peter Kasson, Alex Rasmussen에게 감사한다. ISH는 NSF 대학원 펠로십의 지원에 감사한다. 우리는 NIH(R01-GM062868,
+  U54 GM072970)와 NSF(CHE-0535616)의 지원에 감사한다.</p>
+
+  <hr class="sep"/>
+  <h2>참고문헌</h2>
+  <ol class="references">
+    <li>Friedrichs, M. S.; et al. <em>Journal of Computational Chemistry</em> 2009, 30, 6, 864.</li>
+    <li>Stone, J. E.; Phillips, J. C.; Freddolino, P. L.; Hardy, D. J.; Trabuco, L. G.; Schulten, K. <em>Journal of Computational Chemistry</em> 2007, 28, 16, 2618.</li>
+    <li>Narumi, T.; Yasuoka, K.; Taiji, M.; Höfinger, S. <em>Journal of Computational Chemistry</em> 2009, 30, 14, 2351.</li>
+    <li>Yasuda, K. <em>Journal of Computational Chemistry</em> 2008, 29, 3, 334.</li>
+    <li>Ufimtsev, I. S.; Martinez, T. J. <em>Journal of Chemical Theory and Computation</em> 2008, 4, 2, 222.</li>
+    <li>Vogt, L.; Olivares-Amaya, R.; Kermes, S.; Shao, Y.; Amador-Bedolla, C.; Aspuru-Guzik, A. <em>The Journal of Physical Chemistry A</em> 2008, 112, 10, 2049.</li>
+    <li>Haque, I. S.; Pande, V. S. <em>Journal of Computational Chemistry</em> 2009.</li>
+    <li>Manavski, S.; Valle, G. <em>BMC Bioinformatics</em> 2008, 9, Suppl 2, S10+.</li>
+    <li>Catanzaro, B.; Sundaram, N.; Keutzer, K. In <em>Proc. 25th Intl. Conference on Machine Learning (ICML 2008)</em>. 2008, pp. 104–111.</li>
+    <li>Sheaffer, J. W.; Luebke, D. P.; Skadron, K. In <em>GH '06: Proc. 21st ACM SIGGRAPH/Eurographics Symposium on Graphics Hardware</em>. 2006, pp. 9–16.</li>
+    <li>Sheaffer, J. W.; Luebke, D. P.; Skadron, K. In <em>GH '07: Proc. 22nd ACM SIGGRAPH/EUROGRAPHICS Symposium on Graphics Hardware</em>. 2007, pp. 55–64.</li>
+    <li>Ziegler, J. F. <em>IBM Journal of Research and Development</em> 1996, 40, 1.</li>
+    <li>Gordon, M. S.; et al. <em>IBM Journal of Research and Development</em> 2008, 52, 3.</li>
+    <li>Shivakumar, P.; Kistler, M.; Keckler, S. W.; Burger, D.; Alvisi, L. In <em>DSN '02</em>. 2002, pp. 389–398.</li>
+    <li>Baumann, R. In <em>Intl. Electron Devices Meeting, 2002 (IEDM '02)</em>. 2002, pp. 329–332.</li>
+    <li>Adiga, N. R.; et al. In <em>ACM/IEEE 2002 Conference on Supercomputing (SC'02)</em>. 2002, p. 60.</li>
+    <li>Cockburn, B. F. <em>Journal of Electronic Testing</em> 1994, 5, 4, 321.</li>
+    <li>Metra, C.; Favalli, M.; Riccò, B. <em>IEEE Trans. Comput.</em> 2000, 49, 6, 560.</li>
+    <li>Cataldo, A. <em>EE Times</em> 2001.</li>
+    <li>Tezzaron Semiconductor. <em>Soft Errors in Electronic Memory - A White Paper</em>. Technical report, 2004.</li>
+    <li>Suk, D. S.; Reddy, S. M. <em>IEEE Trans. Computers</em> 1980, C-29, 6, 419.</li>
+    <li>Blandford, J. T.; Pickel, J. C. <em>IEEE Trans. Nuc. Sci.</em> 1985, 32, 6, 4282.</li>
+    <li>Violante, M.; et al. <em>IEEE Trans. Nuc. Sci.</em> 2007, 54, 4, 1184.</li>
+    <li>Nicolescu, B.; Peronnard, P.; Velazco, R.; Savaria, Y. In <em>DFT '03</em>. 2003, pp. 377+.</li>
+    <li>Nicolescu, B.; Velazco, R.; Reorda, M. S. In <em>Proc. Seventh Intl. On-Line Testing Workshop, 2001</em>. 2001, pp. 172–177.</li>
+    <li>Mukherjee, S. S.; Emer, J.; Reinhardt, S. K. In <em>HPCA '05</em>. 2005, pp. 243–247.</li>
+    <li>Walcott, K. R.; Humphreys, G.; Gurumurthi, S. In <em>ISCA '07</em>. ACM, 2007, pp. 516–527.</li>
+    <li>Nickolls, J.; Buck, I.; Garland, M.; Skadron, K. <em>Queue</em> 2008, 6, 2, 40.</li>
+    <li>Lindholm, E.; Nickolls, J.; Oberman, S.; Montrym, J. <em>IEEE Micro</em> 2008, 28, 2, 39.</li>
+    <li>Brady, C. http://www.memtest86.com</li>
+    <li>Shirts, M.; Pande, V. S. <em>Science</em> 2000, 290, 5498, 1903.</li>
+    <li>Beberg, A. L.; Ensign, D. L.; Jayachandran, G.; Khaliq, S.; Pande, V. S. In <em>8th IEEE Intl. Workshop on High Performance Computational Biology (HiCOMB 2009)</em>.</li>
+    <li>Cover, T. M.; Thomas, J. A. <em>Elements of Information Theory, 2nd Edition</em>. Wiley-Interscience, 2006.</li>
+    <li>Witten, I. H.; Frank, E. <em>Data Mining: Practical Machine Learning Tools and Techniques, 2nd Edition</em>. Morgan Kaufmann, 2005.</li>
+    <li>MaxMind. http://www.maxmind.com</li>
+    <li>NVIDIA. <em>NVIDIA CUDA Programming Guide 2.2</em>. 2009.</li>
+    <li>Park, S. K.; Miller, K. W. <em>Commun. ACM</em> 1988, 31, 10, 1192.</li>
+  </ol>
+
+  <div class="translator-note">
+    번역 노트: 본문의 수치·수식·통계량은 원문 그대로 옮겼으며, 원문의 그림 1~5 전부를 원 PDF에서 추출해 각 장에
+    수록했습니다(그림 1: 2장, 그림 2·3: 3장, 그림 4·5: 4장). 원문 PDF는
+    <code>docs/seminar/paper/haque_pande_2009_memtestG80.pdf</code>에 있습니다.
+  </div>
+</body>
+</html>
