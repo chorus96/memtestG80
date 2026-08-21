@@ -2,14 +2,14 @@
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="ko">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="book-id">urn:uuid:e35e5672-99fe-4d53-902d-e68bf54fb468</dc:identifier>
-    <dc:title>GPU 메모리 검증의 내부 구조 — MemtestG80 코드로 읽는 CUDA</dc:title>
+    <dc:title>소프트 오류에 관한 실측 데이터 — GPGPU의 실제 오류율에 대한 대규모 조사</dc:title>
     <dc:language>ko</dc:language>
-    <dc:creator id="cre1">Imran Haque (원저자, 코드)</dc:creator>
-    <dc:contributor>한국어 기술 해설판</dc:contributor>
-    <dc:publisher>MemtestG80 세미나 자료 (한국어 해설)</dc:publisher>
-    <dc:description>오픈소스 GPU 메모리 테스터 MemtestG80(Stanford, 2009)의 실제 소스 코드를 바탕으로 CUDA 병렬 프로그래밍의 원리를 설명하는 한국어 기술 해설서. 스레드 주소 매핑, 공유 메모리 병렬 리덕션, 테스트 알고리즘, 객체지향 API를 코드와 함께 다룬다.</dc:description>
-    <dc:source>github.com/ihaque/memtestG80 (LGPL v3)</dc:source>
-    <dc:date>2026-08-21</dc:date>
+    <dc:creator id="cre1">Imran S. Haque</dc:creator>
+    <dc:creator id="cre2">Vijay S. Pande</dc:creator>
+    <dc:publisher>Stanford University (한국어 번역판)</dc:publisher>
+    <dc:description>원제 "Hard Data on Soft Errors: A Large-Scale Assessment of Real-World Error Rates in GPGPU" (arXiv:0910.0505v2, 2009)의 한국어 번역판. MemtestG80의 설계·검증과 Folding@home 2만여 GPU 대상 대규모 오류율 조사 결과를 원문의 그림·표·참고문헌과 함께 옮김.</dc:description>
+    <dc:source>arXiv:0910.0505v2 [cs.AR] (2009-11-14)</dc:source>
+    <dc:date>2009-11-14</dc:date>
     <meta property="dcterms:modified">2026-08-21T00:00:00Z</meta>
   </metadata>
   <manifest>
@@ -21,6 +21,8 @@
     <item id="ch2" href="text/ch2.xhtml" media-type="application/xhtml+xml"/>
     <item id="ch3" href="text/ch3.xhtml" media-type="application/xhtml+xml"/>
     <item id="ch4" href="text/ch4.xhtml" media-type="application/xhtml+xml"/>
+    <item id="fig1" href="images/figure1.png" media-type="image/png"/>
+    <item id="fig2" href="images/figure2.png" media-type="image/png"/>
   </manifest>
   <spine toc="ncx">
     <itemref idref="title"/>

@@ -7,27 +7,27 @@
     <meta name="dtb:maxPageNumber" content="0"/>
   </head>
   <docTitle>
-    <text>GPU 메모리 검증의 내부 구조 — MemtestG80 코드로 읽는 CUDA</text>
+    <text>소프트 오류에 관한 실측 데이터 — GPGPU의 실제 오류율에 대한 대규모 조사</text>
   </docTitle>
   <navMap>
     <navPoint id="np-1" playOrder="1">
-      <navLabel><text>표지 및 서지 정보</text></navLabel>
+      <navLabel><text>표지 · 초록 · 서지 정보</text></navLabel>
       <content src="text/title.xhtml"/>
     </navPoint>
     <navPoint id="np-2" playOrder="2">
-      <navLabel><text>1. 왜 GPU 메모리를 검사하는가 · MemtestG80 개요</text></navLabel>
+      <navLabel><text>I. 서론 · II. 배경 및 선행 연구</text></navLabel>
       <content src="text/ch1.xhtml"/>
     </navPoint>
     <navPoint id="np-3" playOrder="3">
-      <navLabel><text>2. CUDA 실행 모델과 주소 매핑</text></navLabel>
+      <navLabel><text>III. MemtestG80의 설계와 검증</text></navLabel>
       <content src="text/ch2.xhtml"/>
     </navPoint>
     <navPoint id="np-4" playOrder="4">
-      <navLabel><text>3. 쓰기·검증과 병렬 리덕션</text></navLabel>
+      <navLabel><text>IV. 실험 방법론 · V. 결과</text></navLabel>
       <content src="text/ch3.xhtml"/>
     </navPoint>
     <navPoint id="np-5" playOrder="5">
-      <navLabel><text>4. 테스트 카탈로그 · API · 결론</text></navLabel>
+      <navLabel><text>VI. 분석 · VII. 결론 · 참고문헌</text></navLabel>
       <content src="text/ch4.xhtml"/>
     </navPoint>
   </navMap>

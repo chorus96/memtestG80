@@ -26,10 +26,11 @@
 | `slides/build_session{0..5}.js` | 위 덱을 생성한 pptxgenjs 스크립트 (재생성용) | ✅ |
 | `slides/_deck.js` | 슬라이드 공통 팔레트·헬퍼 | ✅ |
 | [`memtestG80-seminar.html`](memtestG80-seminar.html) | 요약 발표본 (단일 HTML 덱, 16매) | ✅ 보너스 |
-| [`GPU메모리검증_MemtestG80_한국어판.epub`](GPU메모리검증_MemtestG80_한국어판.epub) | 한국어 기술 해설서 전자책 (소스 코드 기반, 4장) | ✅ 완성 |
+| [`paper/haque_pande_2009_memtestG80.pdf`](paper/) | 원논문 PDF — *Hard Data on Soft Errors* (arXiv:0910.0505v2) | ✅ 추가 |
+| [`소프트오류_실측데이터_GPGPU_한국어판.epub`](소프트오류_실측데이터_GPGPU_한국어판.epub) | 원논문 한국어 번역판 전자책 (전 5장, 그림·표·참고문헌 포함) | ✅ 완성 |
 | [`epub/`](epub/) | 위 EPUB의 빌드 소스 (재패키징용) | ✅ |
 
-**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 한국어 EPUB 1.
+**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1.
 
 ## 세션 로드맵
 
@@ -64,12 +65,13 @@ node build_session5.js     # 세션5_객체지향API_라이브러리_캡스톤.p
 
 ```bash
 cd epub
-zip -X -0 ../GPU메모리검증_MemtestG80_한국어판.epub mimetype       # mimetype은 첫 항목·무압축
-zip -X -9 -r ../GPU메모리검증_MemtestG80_한국어판.epub META-INF OEBPS
+zip -X -0 ../소프트오류_실측데이터_GPGPU_한국어판.epub mimetype       # mimetype은 첫 항목·무압축
+zip -X -9 -r ../소프트오류_실측데이터_GPGPU_한국어판.epub META-INF OEBPS
 ```
 
-> 이 전자책은 MemtestG80의 배경 논문이 저장소에 없어(자매 프로젝트 `cuda_memtest`의 SAAHPC'09 논문 한국어판과 대응),
-> **MemtestG80의 실제 소스 코드를 1차 자료로 삼아** 새로 집필한 한국어 기술 해설서입니다.
+> 이 전자책은 MemtestG80의 원논문 *Hard Data on Soft Errors: A Large-Scale Assessment of Real-World Error Rates in GPGPU*
+> (Haque & Pande, arXiv:0910.0505v2, 2009)의 한국어 번역판입니다. 원문의 절 구성·그림(1·3)·표(I)·참고문헌을 포함합니다.
+> 원문 PDF는 `paper/haque_pande_2009_memtestG80.pdf`에 있습니다.
 
 ## `memtestG80` vs `cuda_memtest`
 

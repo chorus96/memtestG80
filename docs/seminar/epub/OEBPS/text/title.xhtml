@@ -7,35 +7,42 @@
   <link rel="stylesheet" type="text/css" href="../css/style.css"/>
 </head>
 <body>
-  <h1>GPU 메모리 검증의 내부 구조</h1>
-  <p class="authors">MemtestG80 코드로 읽는 CUDA 병렬 프로그래밍</p>
-  <p class="affil">원저작: Imran Haque, Stanford University (2009)</p>
-  <p class="affil email">원본 코드: github.com/ihaque/memtestG80 · LGPL v3</p>
+  <h1>소프트 오류에 관한 실측 데이터</h1>
+  <h2 style="border:none;margin-top:0.2em;color:#1f3a5f;">GPGPU의 실제 오류율에 대한 대규모 조사</h2>
+  <p class="authors">Imran S. Haque<sup>1</sup> · Vijay S. Pande<sup>1,2</sup></p>
+  <p class="affil">스탠퍼드 대학교 <sup>1</sup>컴퓨터과학과 · <sup>2</sup>화학과</p>
+  <p class="affil email">원문: Hard Data on Soft Errors — arXiv:0910.0505v2 [cs.AR], 2009-11-14</p>
 
   <hr class="sep"/>
 
   <div class="abstract">
-    <p><span class="label">이 책에 관하여.</span> 이 전자책은 오픈소스 GPU 메모리 테스터
-    <strong>MemtestG80</strong>의 실제 소스 코드(<code>memtestG80_core.cu</code> 등)를 바탕으로,
-    CUDA 병렬 프로그래밍의 핵심 원리를 코드와 함께 설명하는 한국어 기술 해설서입니다. 단순한 "쓰고 되읽기"라는
-    아이디어가 어떻게 수십만 스레드의 병렬성, 공유 메모리 리덕션, 비트 단위 오류 집계로 구현되는지를 따라갑니다.</p>
-    <p class="keywords"><span class="label">키워드:</span> GPU 메모리 테스트, CUDA, 병렬 리덕션,
-    메모리 병합(coalescing), 공유 메모리, __popc, ECC, 소프트 오류</p>
+    <p><span class="label">초록.</span> 그래픽 처리 장치(GPU)는 기존 CPU 대비 압도적인 성능 이점 덕분에 계산화학을 비롯한
+    과학 시뮬레이션 분야에서 널리 쓰이고 있다. 그러나 오류에 민감한 응용에서 GPU의 신뢰성은 대체로 입증되지 않았다.
+    특히 그래픽 카드의 메모리 서브시스템에 오류 검사·정정(ECC) 기능이 없다는 점이 GPU를 고성능 코프로세서로
+    받아들이는 데 걸림돌로 지적되어 왔으나, 이 설계가 미치는 영향은 지금까지 정량화된 바 없었다.</p>
+    <p>본 논문에서 우리는 NVIDIA G80 및 GT200 아키텍처 기반 그래픽 카드의 메모리 오류율을 평가하는 소프트웨어인
+    <strong>MemtestG80</strong>을 제시한다. 나아가 Folding@home 분산 컴퓨팅 네트워크의 2만 개가 넘는 호스트에서
+    MemtestG80을 실행해 수행한 GPU 오류율의 대규모 조사 결과를 제시한다. 통제된 환경의 소비자용 및 GPGPU 전용
+    하드웨어에 대한 대조 실험에서는 오류가 발견되지 않았다. 그러나 Folding@home 상의 카드를 대상으로 한 조사에서는,
+    설치된 환경에서 시험한 GPU의 <strong>3분의 2</strong>가 검출 가능한, 패턴에 민감한 메모리 소프트 오류율을 보였다.
+    우리는 이 오류가 오버클럭과 (온도의 대리 지표인) 환경 요인을 통제한 뒤에도 지속되지만, 보드 아키텍처에 강하게
+    의존함을 보인다.</p>
+    <p class="keywords"><span class="label">핵심어:</span> GPGPU, 소프트 오류, 메모리 신뢰성, MemtestG80, ECC,
+    Folding@home, 오버클럭, G80/GT200 아키텍처</p>
   </div>
 
   <div class="translator-note">
-    이 해설서는 MemtestG80의 배경 논문이 저장소에 포함되어 있지 않아, 대응 자료인 자매 프로젝트
-    <code>cuda_memtest</code>의 SAAHPC'09 논문 한국어판과 같은 형식(EPUB)으로, <strong>MemtestG80의 실제
-    소스 코드를 1차 자료로 삼아</strong> 새로 집필한 것입니다. 모든 코드 인용은 현재 저장소의
-    <code>파일:줄번호</code> 기준입니다.
+    이 전자책은 원논문(arXiv:0910.0505v2)의 한국어 번역판입니다. 원문의 절 구성·그림·표·참고문헌 번호를 그대로 따르며,
+    수식과 정량적 수치는 원문 그대로 옮겼습니다. 그림 1·3은 원 PDF에서 추출해 실었습니다. 원문 PDF는 저장소의
+    <code>docs/seminar/paper/haque_pande_2009_memtestG80.pdf</code>에 있습니다.
   </div>
 
   <h2>차례</h2>
   <ol>
-    <li>왜 GPU 메모리를 검사하는가 · MemtestG80 개요</li>
-    <li>CUDA 실행 모델과 주소 매핑</li>
-    <li>쓰기·검증과 병렬 리덕션</li>
-    <li>테스트 카탈로그 · API · 결론</li>
+    <li>I. 서론 · II. 배경 및 선행 연구</li>
+    <li>III. MemtestG80의 설계와 검증 (오프로드·병렬화, 로직 테스트, 대조 실험)</li>
+    <li>IV. 실험 방법론 · V. 결과</li>
+    <li>VI. 분석 · VII. 결론 · 감사의 글 · 참고문헌</li>
   </ol>
 </body>
 </html>

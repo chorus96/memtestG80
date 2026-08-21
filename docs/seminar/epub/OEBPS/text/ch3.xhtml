@@ -3,99 +3,106 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
 <head>
   <meta charset="UTF-8"/>
-  <title>3. 쓰기·검증과 병렬 리덕션</title>
+  <title>IV. 실험 방법론 · V. 결과</title>
   <link rel="stylesheet" type="text/css" href="../css/style.css"/>
 </head>
 <body>
-  <h1>3. 쓰기·검증과 병렬 리덕션</h1>
+  <h1>IV. 실험 방법론</h1>
+  <h2>IV-A. 시험 절차</h2>
+  <p>V절에 제시한 대규모 평가를 수행하기 위해, MemtestG80을 Folding@home(FAH) 분산 컴퓨팅 네트워크에 배포했다.
+  MemtestG80을 실행할 때마다 장치 정보(카드 이름, 메모리 크기, 셰이더 도메인 클럭 속도)를 수집했다. Folding@home 상
+  GPU의 성능이 매우 다양하기 때문에, 시험 메모리 영역의 크기는 <strong>32~128 MiB</strong> 사이에서 달라졌다. 128MiB보다
+  큰 크기는 기증자 컴퓨터의 응답성에 미치는 부정적 영향 때문에 허용하지 않았다. GPU의 높은 메모리 대역폭 요구 때문에,
+  메모리 블록은 총 처리량을 높이기 위해 물리적 메모리 칩들에 걸쳐 인터리브되어 있을 가능성이 크다. 우리는 시험한 메모리
+  영역 크기가 충분히 커서, 시험 장치의 물리 칩 전부 또는 상당 부분에 걸쳐 퍼질 가능성이 높다고 본다. 로직 테스트에 쓰인
+  LCG 주기는 256, 512, 또는 1024였다. 시험 영역 크기처럼 LCG 주기도 기증자 그래픽 카드의 성능에 따라 달라졌다. 끝으로
+  Folding@home에서는 응답성 문제로 인해 테스트 이터레이션당 모듈로-20 테스트를 2개 라운드만 실행했다. 이후 라운드는
+  다음 이터레이션들에서 수행했다.</p>
 
-  <h2 id="wv">3.1 쓰기 → 검증 뼈대</h2>
-  <p>모든 메모리 테스트는 하나의 단순한 뼈대 위에 서 있습니다. <strong>알려진 패턴을 쓰고, 커널이 끝난 뒤,
-  되읽어 기대값과 비교</strong>합니다. 가장 고전적인 테스트인 이동 반전(Moving Inversions)이 이 뼈대를
-  전형적으로 보여줍니다.</p>
+  <p>이러한 시험 영역에서 우리는 가변적인 수의 테스트 이터레이션을 실행하고 모든 이터레이션에 대한 개별 결과를 수집했다.
+  (GPU 로직 오류 때문에 신뢰할 수 없을 수 있는) 정확한 비트 오류율을 측정하기보다, 테스트 이터레이션 동안 오류가 하나라도
+  검출되었는지 여부만 확인했다. 이는 테스트의 견고성을 보장한다. 오류를 반환했어야 할 테스트가 이후의 GPU 메모리·로직
+  오류로 "오류 플래그" 비트가 꺼져 검출되지 않아 위음성(false negative)이 생길 수는 있다. 반면 테스트가 성공적으로 실행되면
+  GPU 오류가 오류 플래그 비트를 켤 수 있는데, 이것 자체가 GPU 오류다. 따라서 이 이진 판정 방식은 위양성(false positive)
+  문제를 제거한다. 최악의 경우 우리의 결과는 오류율을 과소평가할 뿐, 결코 과대평가하지 않는다.</p>
 
-  <figure class="code">
-  <pre><span class="cm">// memtestG80_core.cu:370 — gpuMovingInversionsOnesZeros</span>
-gpuWriteConstant (nBlocks, nThreads, base, N, <span class="st">0xFFFFFFFF</span>);   <span class="cm">// 전부 1을 쓴다</span>
-SOFTWAIT();                                                <span class="cm">// 커널 완료 대기</span>
-err  = gpuVerifyConstant(nBlocks, nThreads, base, N, <span class="st">0xFFFFFFFF</span>, ...);  <span class="cm">// 검증</span>
+  <h2>IV-B. 시험 장치 통계</h2>
+  <p>이 시험은 <strong>2만 개가 넘는 서로 다른 GPU</strong>에서 최소 한 번씩, 총합 <strong>46억 회 이상</strong>의 테스트
+  이터레이션으로 실행되었다. 데이터의 96.6%는 시험 영역 64 MiB, LCG 주기 512로 수집되었고, 3.2%는 32 MiB 영역·주기 256
+  LCG로, 나머지는 128 MiB 시험 영역·주기 1024 LCG로 수집되었다. 시험된 보드는 북미와 유럽을 잘 포괄하며 전 세계에
+  분포한다. 그 외 지역의 분포는 대규모 인구 밀집지 부근에 뚜렷이 몰려 있다(다만 남아프리카를 제외하면 아프리카는
+  표본이 빈약하다).</p>
 
-gpuWriteConstant (nBlocks, nThreads, base, N, <span class="st">0x0</span>);          <span class="cm">// 보수로 덮는다</span>
-SOFTWAIT();
-err += gpuVerifyConstant(nBlocks, nThreads, base, N, <span class="st">0x0</span>, ...);
-<span class="kw">return</span> err;                                                <span class="cm">// 두 위상의 오류 합</span></pre>
-  <figcaption>코드 3. 패턴과 그 보수를 번갈아 쓰고 검증한다</figcaption>
-  </figure>
+  <p>NVIDIA 사양과 각 보드가 보고한 셰이더 클럭 속도를 이용해, 우리는 보드를 대체로 오버클럭 또는 "정격(stock)" 주파수로
+  분류할 수 있었다. 몇몇 경우 같은 이름의 보드가 여러 정격 클럭을 가질 수 있어(예: 서로 다른 열 설계에 맞춘 모델) 오버클럭
+  여부를 판정할 수 없다. 메모리 클럭 속도가 로직(셰이더) 클럭보다 메모리 오류율에 더 큰 영향을 주지만, 메모리 오버클럭은
+  셰이더 오버클럭과 공변할 것으로 기대된다. Folding@home 사용자가 보드를 오버클럭하는 전형적 이유는 분자동역학(MD) 작업
+  단위의 처리량을 높이기 위해서다. 경험적으로 셰이더 클럭이 MD 실행 시간에 메모리 클럭보다 더 큰 영향을 주므로,
+  Folding@home의 보드가 셰이더는 오버클럭하지 않고 메모리만 오버클럭했을 가능성은 낮다.</p>
 
-  <div class="note">
-    <span class="note-title">왜 쓰기와 읽기를 나누는가</span>
-    <p>커널 실행은 비동기(asynchronous)입니다. 호스트는 커널을 띄운 뒤 곧바로 다음 줄로 갑니다. 따라서
-    되읽기 전에 반드시 GPU 완료를 기다려야 하며, 이 역할을 <code>SOFTWAIT()</code> 매크로가 합니다
-    (<code>memtestG80_core.h:49</code>). 커널 경계가 곧 메모리 배리어가 되어, 모든 스레드의 쓰기가 전역
-    메모리에 확실히 반영된 뒤에 검증이 시작됩니다. <code>SOFTWAIT</code>은 드라이버의 스핀 대기 대신
-    슬립하며 폴링하고, 15초 안에 끝나지 않으면 타임아웃 값 <code>0xFFFFFFFE</code>를 반환합니다.</p>
+  <p>그림 2는 이 실험 동안 주어진 이터레이션 수를 완료한 카드 수를 나타내며, 데이터를 정격 이하(묶어서 "stock"),
+  오버클럭, 오버클럭 여부 불명 카드로 나눈다. 결과는 Folding@home 상 카드의 근소한 다수가 오버클럭되어 있으며, 대부분의
+  이터레이션 컷오프에서 오버클럭 카드와 정격 카드 수가 비슷함을 보여준다.</p>
+
+  <p>끝으로 우리는 NVIDIA 제품군 전반의 GPU를 잘 포괄했다. 표 I은 실험 동안 최소 300,000회 이터레이션을 완료한 특정
+  NVIDIA 제품군의 카드 수를 보여준다. 데이터셋이 Folding@home의 소비자 지향적 성격 탓에 NVIDIA 소비자 그래픽 카드
+  (GeForce)에 강하게 치우쳐 있으나, 소수의 프로페셔널(Quadro)·GPGPU 전용(Tesla) 보드도 표본에 포함된다.</p>
+
+  <div class="table-wrap">
+  <table>
+    <caption>표 I. FAH에서 최소 300,000회 테스트 이터레이션을 실행한 카드의 분포</caption>
+    <thead><tr><th>카드 제품군</th><th>≥ 300,000 이터레이션 카드 수</th></tr></thead>
+    <tbody>
+      <tr><td>소비자용 그래픽 카드</td><td>4,754 (합계)</td></tr>
+      <tr><td>GeForce 8800</td><td>1,779</td></tr>
+      <tr><td>GeForce 9800/GTS</td><td>1,375</td></tr>
+      <tr><td>GeForce GTX</td><td>1,137</td></tr>
+      <tr><td>GeForce 9600</td><td>368</td></tr>
+      <tr><td>GeForce 8600</td><td>65</td></tr>
+      <tr><td>GeForce 9500</td><td>19</td></tr>
+      <tr><td>Mobile GeForce</td><td>11</td></tr>
+      <tr><td>프로페셔널 그래픽 카드</td><td>36 (합계)</td></tr>
+      <tr><td>Quadro FX</td><td>29</td></tr>
+      <tr><td>Quadroplex 2200</td><td>6</td></tr>
+      <tr><td>Quadro NVS</td><td>1</td></tr>
+      <tr><td>GPGPU 전용 카드</td><td>22 (합계)</td></tr>
+      <tr><td>Tesla T10</td><td>20</td></tr>
+      <tr><td>Tesla C1060</td><td>2</td></tr>
+    </tbody>
+  </table>
   </div>
 
-  <h2 id="reduce">3.2 __popc와 트리 리덕션</h2>
-  <p>52만 개의 스레드가 각자 자기 word들을 검사해 오류 수를 셌다면, 이제 그 전체 합을 구해야 합니다. 모든
-  스레드가 하나의 전역 카운터를 동시에 늘리면 경쟁 조건(race condition)으로 값이 뭉개지고, 원자연산으로
-  직렬화하면 52만 번의 경합이 발생해 느립니다. MemtestG80은 <strong>계층적 리덕션</strong>으로 이를
-  해결합니다.</p>
+  <h1>V. 결과</h1>
+  <p>우리는 IV-A절에서 기술한 방법으로 반환된 각 테스트 이터레이션을 실패 또는 비실패로 분류했다. 그런 다음 시험한 각
+  카드에 대해 (주어진 테스트 이터레이션에서의) 경험적 실패 확률을 실패 테스트 대 전체 테스트의 비로 추정하여, 임의의 카드가
+  주어진 실패 확률을 가질 경험적 확률 분포를 추정했다. 통계적 타당성을 높이기 위해, 이 경험적 카드-신뢰성 확률 분포를
+  구성하는 데 카드가 완료해야 할 최소 이터레이션 수에 여러 컷오프를 적용했다. 우리의 기저 통계 모델은, 각 카드(그리고 그
+  환경)가 자체 실패 확률 P(fail)을 가지며, 각 카드는 어떤 기저 분포 P(P(fail))로부터 독립적으로 뽑힌다는 것이다. 이하 모든
+  그림과 분석에서 "P(fail)"은 임의의 카드가 단일 MemtestG80 이터레이션에서 실패할 확률을 가리킨다.</p>
 
-  <p>먼저, 오류를 세는 방식 자체가 영리합니다. 단순히 "맞다/틀리다"가 아니라, 뒤집힌 <strong>비트의
-  개수</strong>를 셉니다.</p>
-
-  <figure class="code">
-  <pre><span class="cm">// memtestG80_core.cu:28</span>
-<span class="kw">#define</span> BITSDIFF(x,y) __popc((x) ^ (y))
-<span class="cm">//  __popc = population count = 1인 비트의 개수</span>
-<span class="cm">//  예) 기대 0xFFFFFFFF, 실제 0xFFFFFF8F → XOR = 0x00000070 → __popc = 3 (3비트 손상)</span></pre>
-  <figcaption>코드 4. XOR 후 1비트의 개수를 세어 다중 비트 오류까지 정밀하게 집계</figcaption>
+  <figure>
+    <img src="../images/figure2.png" alt="카드 실패 확률의 경험적 CDF·PMF 그래프"/>
+    <figcaption>그림 3. 카드 실패 확률의 경험적 확률질량함수(PMF)와 누적분포함수(CDF). (a) 여러 테스트-이터레이션 수
+    임계값에서의 경험적 CDF. (b) 최소 300,000회 MemtestG80 이터레이션을 실행한 카드의 경험적 PMF·CDF.</figcaption>
   </figure>
 
-  <p><code>__popc</code>는 하드웨어 인트린식(단일 명령)입니다. 한 word에서 여러 비트가 손상되어도 모두
-  포착되므로 오류율 추정이 정밀해집니다. 이렇게 스레드별로 센 부분합을, 블록 안에서 공유 메모리(shared
-  memory)를 이용해 트리 형태로 접어 합칩니다.</p>
+  <p>그림 3(a)는 이 데이터에서 도출한, 이터레이션 임계값 4개 값에 대한 누적분포함수(적분된 확률 분포)를 보여준다. 각
+  곡선은 카드를 포함시키기 위해 완료해야 하는 이터레이션 수에 대한 서로 다른 컷오프로 계산한 분포를 나타낸다. 카드의 완료
+  이터레이션 수가 많을수록 그 실패 확률이 추정 분포의 해당 구간에 있다는 통계적 확실성이 커진다. 100만 회 이터레이션까지의
+  컷오프만 제시하는데, 이 한계를 넘어서면 표본 카드 수가 급감해 그 이상 컷오프로 만든 추정은 통계적으로 유용하지 않기
+  때문이다.</p>
 
-  <figure class="code">
-  <pre><span class="cm">// memtestG80_core.cu:213 — deviceVerifyConstant</span>
-<span class="kw">extern</span> <span class="kw">__shared__</span> uint threadErrorCount[];        <span class="cm">// 블록 공유 버퍼 (512개)</span>
-threadErrorCount[threadIdx.x] = 0;
+  <p>데이터에서 가장 뚜렷한 경향은 강한 <strong>쌍봉(bimodal) 분포</strong>다. 모든 CDF는 P(fail)=0에서 0이 아닌 값으로
+  시작하는데, 이는 각 임계값에서 한 번도 실패하지 않은 카드의 비율을 나타낸다. 모든 CDF는 나아가 평균 P(fail)이 약
+  <strong>2×10<sup>−5</sup></strong> 부근인 두 번째 집단을 보이며, 이 집단이 나머지 카드 거의 전부를 차지한다. 끝으로
+  실패율이 1×10<sup>−4</sup>보다 높은 매우 작은 집단이 있는데, 이는 결함 있는 하드웨어일 가능성이 크다. 이 쌍봉 경향은
+  통계적으로 유의하며, 가장 큰 컷오프에서도 계속 나타난다. 특히 50,000·300,000·1,000,000회 임계값의 분포 모두에서 오류가
+  0인 카드의 비율이 비슷하며, 이는 이 집단이 안정적임(즉, 더 많은 이터레이션으로 측정해도 오류-0 집단에서 오류를 찾지
+  못함)을 가리킨다.</p>
 
-<span class="kw">for</span> (uint i = 0; i &lt; N; i++)                       <span class="cm">// 내 word들 검사</span>
-    threadErrorCount[threadIdx.x] += BITSDIFF(*(THREAD_ADDRESS(base,N,i)), constant);
-
-<span class="kw">for</span> (uint stride = blockDim.x&gt;&gt;1; stride &gt; 0; stride &gt;&gt;= 1) {   <span class="cm">// 트리 리덕션</span>
-    <span class="fn">__syncthreads</span>();                              <span class="cm">// ★ 단계마다 동기화 필수</span>
-    <span class="kw">if</span> (threadIdx.x &lt; stride)
-        threadErrorCount[threadIdx.x] += threadErrorCount[threadIdx.x + stride];
-}
-<span class="kw">if</span> (threadIdx.x == 0)
-    blockErrorCount[blockIdx.x] = threadErrorCount[0];       <span class="cm">// 대표 1개만 저장</span></pre>
-  <figcaption>코드 5. 세미나 전체에서 가장 밀도 높은 15줄 — 교과서적 병렬 리덕션</figcaption>
-  </figure>
-
-  <p><code>stride</code>를 512 → 256 → … → 1로 절반씩 줄이며, 각 단계마다 절반의 스레드만 이웃 값을 더합니다.
-  9단계(log&#8322; 512)면 512개가 하나로 접힙니다.</p>
-
-  <div class="callout">
-    <span class="callout-title">중요! __syncthreads의 역할</span>
-    <p>각 <code>stride</code> 단계는 이전 단계의 결과에 의존합니다. <code>__syncthreads()</code>는 블록 안
-    모든 스레드가 이 지점에 도달할 때까지 기다리는 배리어(barrier)로, 공유 메모리 쓰기가 서로에게 보이도록
-    보장합니다. 이 동기화를 빠뜨리면 일부 스레드가 앞서가 이웃의 옛 값을 더하게 되어, 정상 GPU인데도
-    합계가 실행마다 달라지는(비결정적) 버그가 생깁니다.</p>
-  </div>
-
-  <p>마지막 3단계는 호스트가 맡습니다. GPU는 52만 개를 블록당 1개, 즉 1024개로 줄이고, 그 1024개만 CPU로
-  복사해 최종 합산합니다.</p>
-
-  <figure class="code">
-  <pre><span class="cm">// memtestG80_core.cu:195 — gpuVerifyConstant (호스트)</span>
-cudaMemcpy(errorCounts, blockErrorCount, sizeof(uint)*nBlocks, D2H);  <span class="cm">// 1024개만</span>
-uint totalErrors = 0;
-<span class="kw">for</span> (uint i = 0; i &lt; nBlocks; i++) totalErrors += errorCounts[i];    <span class="cm">// CPU 최종 합</span>
-<span class="kw">return</span> totalErrors;</pre>
-  <figcaption>코드 6. GPU는 대량 병렬 축약을, CPU는 소량 최종 합을 — 각자 잘하는 일을 맡는다</figcaption>
-  </figure>
+  <p>이 경향들이 이터레이션 컷오프에 대해 안정적이므로, 통계적 타당성을 유지하는 하나의 대표 컷오프에서 실패 확률 분포를
+  살펴보는 것이 유익하다. 그림 3(b)는 이터레이션 컷오프 ≥300,000에서의 확률질량함수와 누적분포함수를 함께 보여준다. 이
+  임계값에서 시험한 카드의 약 <strong>3분의 1</strong>은 메모리 오류를 한 번도 보이지 않았다. 나머지 거의 전부는 실패
+  확률이 0과 10<sup>−4</sup> 사이였고, 약 2%만이 이보다 높은 실패 확률을 보였다.</p>
 </body>
 </html>
