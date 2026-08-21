@@ -1,101 +1,74 @@
-# MemtestG80 심층 분석 — 세미나 자료
+# CUDA 세미나 — `memtestG80`로 배우는 실전 GPU 프로그래밍
 
-CUDA로 구현된 오픈소스 GPU 메모리 테스터 **MemtestG80**의 내부 구조를 코드로 읽는 세미나 자료입니다.
+이 디렉터리는 `memtestG80` 저장소의 **실제 소스 코드**를 교재로 삼는 CUDA 입문 세미나 자료 모음입니다.
 
-## 파일
+- **대상**: C 언어는 알지만 CUDA는 처음인 입문자
+- **형식**: 다회차 시리즈 (세션 0 ~ 세션 5)
+- **표기**: 한글 용어 옆에 원어(영어)를 병기합니다. 예) 커널(kernel)
 
-| 파일 | 설명 |
-|------|------|
-| [`memtestG80-seminar.html`](./memtestG80-seminar.html) | 16장짜리 발표 슬라이드 덱 (브라우저에서 바로 열기). 방향키/스페이스/스와이프로 이동, 하단 도트로 점프. |
-| `README.md` | 발표자 노트 및 슬라이드별 요약 (이 문서) |
+## 자료 구성
 
-슬라이드 조작: `←` `→` `Space` 이동 · `Home`/`End` 처음·끝 · 하단 도트 클릭 점프 · URL 해시(`#7`)로 특정 슬라이드 딥링크.
+| 파일/폴더 | 내용 | 상태 |
+|---|---|---|
+| [`커리큘럼.md`](커리큘럼.md) | 전체 시리즈(세션 0~5) 설계 · 학습목표 · 코드 지도 · 준비물 | ✅ 완성 |
+| [`세션0_실습랩.md`](세션0_실습랩.md) | 세션 0 환경 구축 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션0_환경구축과_큰그림.pptx`](slides/) | 세션 0 슬라이드 덱 (10매) | ✅ 완성 |
+| [`세션1_실습랩.md`](세션1_실습랩.md) | 세션 1 스레드 모델·주소 매핑 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션1_스레드모델과_주소매핑.pptx`](slides/) | 세션 1 슬라이드 덱 (11매) | ✅ 완성 |
+| [`세션2_실습랩.md`](세션2_실습랩.md) | 세션 2 쓰기·검증 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션2_메모리모델과_쓰기검증.pptx`](slides/) | 세션 2 슬라이드 덱 (9매) | ✅ 완성 |
+| [`세션3_실습랩.md`](세션3_실습랩.md) | 세션 3 공유 메모리·병렬 리덕션 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션3_공유메모리와_병렬리덕션.pptx`](slides/) | 세션 3 슬라이드 덱 (10매) | ✅ 완성 |
+| [`세션4_실습랩.md`](세션4_실습랩.md) | 세션 4 테스트 알고리즘·성능 실습 (Ex 1~4) | ✅ 완성 |
+| [`slides/세션4_테스트알고리즘과_성능측정.pptx`](slides/) | 세션 4 슬라이드 덱 (9매) | ✅ 완성 |
+| [`세션5_실습랩_캡스톤.md`](세션5_실습랩_캡스톤.md) | 세션 5 실습 + 캡스톤 프로젝트 가이드 | ✅ 완성 |
+| [`slides/세션5_객체지향API_라이브러리_캡스톤.pptx`](slides/) | 세션 5 슬라이드 덱 (9매) | ✅ 완성 |
+| `slides/build_session{0..5}.js` | 위 덱을 생성한 pptxgenjs 스크립트 (재생성용) | ✅ |
+| `slides/_deck.js` | 슬라이드 공통 팔레트·헬퍼 | ✅ |
+| [`memtestG80-seminar.html`](memtestG80-seminar.html) | 요약 발표본 (단일 HTML 덱, 16매) | ✅ 보너스 |
 
----
+**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1.
 
-## 발표자 노트 (슬라이드별)
+## 세션 로드맵
 
-### 1. 표지
-- 주제: ECC 없는 GPU에서 조용히 발생하는 비트 오류를, 수십만 스레드의 병렬성으로 잡아내는 도구를 코드로 읽는다.
-
-### 2. 왜 GPU 메모리를 테스트하는가
-- 소비자용 GPU는 대개 **ECC가 없다** → 비트 플립이 조용히 계산에 섞인다.
-- 오버클럭·발열·전압 마진 부족은 **산발적(intermittent) 오류**를 만든다.
-- CPU의 `Memtest86`는 GPU VRAM을 직접 두드릴 수 없다 → GPU 위에서 도는 테스터가 필요.
-- README 인용: "문제 있는 카드조차 5만 번에 한 번 꼴로만 실패할 수 있다" → **크게, 오래** 돌려야 한다.
-
-### 3. MemtestG80 개요
-- Stanford Folding@home 팀, 2009, LGPL v3. Memtest86 테스트들의 CUDA 이식.
-- **라이브러리 우선** 설계(`memtestG80_core.h`) + 예제 겸용 CLI(`memtestG80_cli.cu`).
-- 기본 그리드 **1024 blocks × 512 threads = 524,288 스레드**.
-
-### 4. CUDA 실행 모델 (배경)
-- 커널(`__global__`)은 grid(→block→thread) 위에서 실행.
-- 각 스레드는 `blockIdx.x`/`threadIdx.x`/`blockDim.x`로 자기 위치를 알아 담당 주소를 계산.
-- 메모리 계층: **global**(VRAM=테스트 대상) / **shared**(블록 공유) / register.
-- `__syncthreads()`가 병렬 리덕션의 열쇠. MemtestG80은 전부 **1차원 선형** 인덱싱.
-
-### 5. 스레드 → 주소 매핑 `THREAD_ADDRESS` (핵심 ①)
-```c
-#define THREAD_ADDRESS(base,N,i) \
-    (base + blockIdx.x*N*blockDim.x + i*blockDim.x + threadIdx.x)
 ```
-- 이웃 스레드가 이웃 주소를 맡아 **메모리 coalescing** → 대역폭 최대화.
-- 그리드당 테스트 용량 = `1024 × 512 × N × 4B = 2·N MiB`.
+세션 0  환경 구축 & 큰 그림                    ✅ 완성  ← 오리엔테이션
+세션 1  스레드 모델 & 주소 매핑 (THREAD_ADDRESS) ✅ 완성  ← 핵심 회차
+세션 2  메모리 모델 & 쓰기·검증 패턴            ✅ 완성
+세션 3  공유 메모리 & 병렬 리덕션               ✅ 완성  ← 이 도구의 백미
+세션 4  테스트 알고리즘 & 성능 측정             ✅ 완성
+세션 5  객체지향 API · 라이브러리 · 캡스톤       ✅ 완성  ← 본편(1~5) 완결
+```
 
-### 6. 쓰기 → 검증 뼈대 (핵심 ②)
-- 모든 테스트 = 알려진 패턴 쓰기 → (필요 시 반전/반복) → 되읽어 비교.
-- `deviceWriteConstant`: 각 스레드가 자기 word들을 채운다.
+각 세션은 **[개념 강의(슬라이드)] → [코드 리딩(실제 파일)] → [실습 랩(직접 수정·실행)]** 3단 구성입니다.
 
-### 7. 오류 카운팅의 두 묘수 (핵심 ③ — 가장 영리)
-- **묘수 1**: `BITSDIFF(x,y) = __popc((x)^(y))` → 뒤집힌 **비트 개수**를 센다(다중 비트 오류 포착).
-- **묘수 2**: 스레드별 카운트를 shared memory 트리 리덕션으로 블록 내 합산 → 블록 합만 호스트로 복사 → CPU가 ~1k개 최종 합산.
+## 슬라이드 덱 다시 만들기
 
-### 8. 테스트 카탈로그
-- 한 iteration이 13종 테스트를 순차 실행. Walking 계열은 shift(8/32/20)만큼 커널을 반복하므로 실제 실행 횟수는 더 많다.
-- Memtest86 계보: #2 Moving Inversions, #3 Walking 8-bit, #4 random, #6 Walking 32-bit, #7 Random Blocks, #8 Modulo-20 (+ 고유 Logic 테스트).
+```bash
+cd slides
+npm install pptxgenjs      # 최초 1회
+node build_session0.js     # 세션0_환경구축과_큰그림.pptx 생성
+node build_session1.js     # 세션1_스레드모델과_주소매핑.pptx 생성
+node build_session2.js     # 세션2_메모리모델과_쓰기검증.pptx 생성
+node build_session3.js     # 세션3_공유메모리와_병렬리덕션.pptx 생성
+node build_session4.js     # 세션4_테스트알고리즘과_성능측정.pptx 생성
+node build_session5.js     # 세션5_객체지향API_라이브러리_캡스톤.pptx 생성
+```
 
-### 9. Moving Inversions
-- `0xFFFFFFFF` 쓰고 검증 → `0x0`으로 반전해 다시 검증. 모든 셀이 1과 0을 안정적으로 저장하는지 + 이웃 오염 검사.
-- random 변형은 값 의존적 결함을 노린다.
+> 슬라이드는 한글 폰트로 **맑은 고딕(Malgun Gothic)** 을, 코드에는 **Courier New** 를 사용합니다.
+> PowerPoint(한국어 Office)에서 정상 표시됩니다. 모든 덱은 `_deck.js`의 "하드웨어 진단 계측기" 테마(딥 슬레이트 + 앰버/틸)를 공유합니다.
 
-### 10. Walking Bits
-- **M86 8-bit**: `1<<shift`를 32비트로 복제해 전 영역 동일 기록·검증 + 보수 검증.
-- **True Walking 8-bit**: 워드 내에서 비트가 실제 이동 → 인접 라인 결합 결함에 민감.
-- **32-bit**: 32비트 전 폭에서 단일 비트 이동(shift 0~31).
+## `memtestG80` vs `cuda_memtest`
 
-### 11. Random Blocks & Modulo-20
-- **Random Blocks**: `rand()` 시드로 **재현 가능한** 난수 기록, 검증 시 같은 시드로 재생성해 비교.
-- **Modulo-20**: 20 word마다 패턴 배치, 나머지는 보수 → 주기적 주소 간섭 표적.
+두 도구 모두 GPU 메모리 테스터지만 교재로서 강조점이 다릅니다.
 
-### 12. Logic Test — Short LCG (메모리가 아니라 연산)
-- 짧은 주기 LCG를 `k·period`번 실행 → 결과는 항상 0으로 복귀하도록 설계. k가 달라도 결과가 같아야 하므로 차이=로직 오류.
-- 짝 XOR(`^0xFFFFFFF0 ^0xF`)로 명령 다양성 확보(단일 XOR은 NOT으로 최적화돼 사라짐 — decuda로 검증).
-- **shmem 버전**은 중간값을 shared memory에 둬 셰이더 오버클럭 오류에 민감.
+- **cuda_memtest**: `<<<grid, 1>>>` (블록당 스레드 1개)의 의도적으로 단순한 커널 → CUDA **문법 입문**에 최적
+- **memtestG80**: `<<<1024, 512>>>` + 공유 메모리 리덕션 + coalescing → CUDA **병렬 패턴**을 실코드로 학습
 
-### 13. 메모리 대역폭 측정
-- D2D `cudaMemcpy` 반복 → **비동기**이므로 `cudaThreadSynchronize()` 후 타이밍. 읽기+쓰기라 대역폭 **×2**.
+본 커리큘럼은 memtestG80의 강점(세션 1의 주소 매핑, 세션 3의 병렬 리덕션)에 초점을 맞춥니다.
 
-### 14. 3계층 API 아키텍처
-- **Layer 3**: `memtestState` 클래스(OO, 사용자 권장) → **Layer 2**: `__host__ gpuXxx`(커널+동기화+리덕션) → **Layer 1**: `__global__ deviceXxx`(내부 커널).
-- 네이밍: `gpuXxx`/`cpuXxx`=공개, `deviceXxx`=내부. `SOFTWAIT()`=스핀 대신 슬립 폴링.
-- 센티넬: `0xFFFFFFFF`=런치 실패, `0xFFFFFFFE`=타임아웃.
+## 참고
 
-### 15. 사용법 · 결과 해석
-- `memtestG80 --gpu 2 256 100` (256MB, 100회, 3번째 GPU). 영역은 2MB 단위 반올림. 오류 있으면 종료 코드 non-zero.
-- **40억 넘는 오류 = 진짜 결함 아님**, 드라이버 워치독 타임아웃. 영역 줄이면 사라짐.
-- 원칙: 의심되면 **크게, 수천 회**.
-
-### 16. 정리
-1. 검증된 알고리즘(Memtest86)의 병렬 이식.
-2. 단순한 뼈대(쓰고 되읽기) + 영리한 디테일(`__popc`, 병렬 리덕션).
-3. 메모리 + 로직 둘 다 검증.
-- 읽을 순서: `cli.cu` 메인 루프 → `core.cu`의 `THREAD_ADDRESS` → `deviceVerifyConstant` 리덕션.
-
----
-
-## 참고 소스 위치
-
-- `memtestG80_core.h` — 공개 API (`memtestState` 클래스, `gpuXxx` 선언)
-- `memtestG80_core.cu` — 커널·호스트 함수 본체 (`THREAD_ADDRESS`는 26행, `deviceVerifyConstant`는 리덕션)
-- `memtestG80_cli.cu` — CLI 메인 루프와 13종 테스트 실행 순서
+- 원본 프로젝트: https://github.com/ihaque/memtestG80 (LGPL v3)
+- 폐쇄형 버전: https://simtk.org/home/memtest
+- NVIDIA CUDA C++ Programming Guide (공식 문서)
