@@ -59,6 +59,22 @@ function newDeck() {
     return { text, options: Object.assign({ color: color || C.TEXT, breakLine: true }, opts || {}) };
   }
 
+  // 화살표 (수평/수직/대각). w 또는 h가 0이면 직선 화살표.
+  function arrow(slide, x, y, w, h, color, opts) {
+    opts = opts || {};
+    slide.addShape(p.ShapeType.line, {
+      x, y, w, h,
+      line: Object.assign({ color: color || C.FAINT, width: 2, endArrowType: "triangle" }, opts),
+    });
+  }
+
+  // 다이어그램용 라벨 박스 (외곽선 있는 노드)
+  function nodeBox(slide, x, y, w, h, title, sub, color, fill) {
+    slide.addShape(p.ShapeType.roundRect, { x, y, w, h, rectRadius: 0.05, fill: { color: fill || C.CODEBG }, line: { color: color || C.LINE, width: 1.5 } });
+    if (title) slide.addText(title, { x: x+0.12, y: y+0.1, w: w-0.24, h: sub ? 0.4 : h-0.2, align: "center", valign: sub ? "top" : "middle", fontFace: KFONT, fontSize: 14, bold: true, color: color || C.TEXT, margin: 0 });
+    if (sub) slide.addText(sub, { x: x+0.12, y: y+h-0.5, w: w-0.24, h: 0.42, align: "center", valign: "middle", fontFace: MONO, fontSize: 10.5, color: C.MUTED, margin: 0 });
+  }
+
   // 라운드 카드
   function card(slide, x, y, w, h, fill, lineColor) {
     slide.addShape(p.ShapeType.roundRect, {
@@ -104,7 +120,7 @@ function newDeck() {
     return s;
   }
 
-  return { p, bg, header, codePanel, ln, card, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, H, M };
+  return { p, bg, header, codePanel, ln, card, arrow, nodeBox, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, H, M };
 }
 
 module.exports = { newDeck, C, KFONT, MONO, W, H, M };

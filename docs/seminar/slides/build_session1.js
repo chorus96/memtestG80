@@ -1,7 +1,7 @@
 // build_session1.js — 세션 1: CUDA 스레드 모델과 주소 매핑
 const { newDeck } = require("./_deck.js");
 const D = newDeck();
-const { p, bg, header, codePanel, ln, card, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
+const { p, bg, header, codePanel, ln, card, arrow, nodeBox, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
 
 // 1 — Title
 titleSlide(
@@ -224,6 +224,40 @@ titleSlide(
     ln("memtestState() : nBlocks(1024), nThreads(512), ... {};", C.TEXT),
   ], { fontSize: 12.5 });
   s.addNotes("커널 launch는 비동기입니다(호스트는 곧바로 리턴). 이 성질은 세션 3·4에서 타이밍·오류와 함께 다룹니다.");
+})();
+
+// 8b — 커널 launch 흐름 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "8", "커널 launch 흐름 · 호출에서 완료까지", C.TEAL);
+  s.addText("<<<>>> 한 줄을 실행하면, 요청이 GPU로 넘어가 블록이 SM에 분배되고 워프 단위로 실행됩니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  const fw = 7.7, fx = M;
+  const steps = [
+    ["① 호스트(CPU) — 커널 실행 요청", "deviceWriteConstant<<<1024, 512>>>(...)", C.TEAL, true],
+    ["② GPU 스케줄러 — 블록을 SM에 분배", "블록 1024개 → 여러 SM에 나눠 배정", C.AMBER, false],
+    ["③ 각 SM — 워프(32 스레드) 단위로 실행", "블록 안 512 스레드가 실제 연산 수행", C.AMBER, false],
+    ["④ 커널 완료 — 결과는 전역 메모리에", "호스트는 SOFTWAIT로 완료를 기다림", C.AMBER, false],
+  ];
+  let y = 2.05; const bh = 0.92, step = 1.12;
+  steps.forEach((st, i) => {
+    card(s, fx, y, fw, bh, st[3] ? "16242C" : "241A16", st[2]);
+    s.addText(st[0], { x: fx+0.28, y: y+0.12, w: fw-0.5, h: 0.4, fontFace: KFONT, fontSize: 15, bold: true, color: st[2], margin: 0, valign: "middle" });
+    s.addText(st[1], { x: fx+0.28, y: y+0.5, w: fw-0.5, h: 0.32, fontFace: MONO, fontSize: 11, color: C.MUTED, margin: 0, valign: "middle" });
+    if (i < steps.length-1) arrow(s, fx+fw/2, y+bh+0.02, 0, step-bh-0.04, C.FAINT);
+    y += step;
+  });
+  s.addText("호스트", { x: fx+fw+0.15, y: 2.25, w: 1.5, h: 0.4, fontFace: KFONT, fontSize: 12, bold: true, color: C.TEAL, margin: 0 });
+  s.addText("디바이스(GPU)", { x: fx+fw+0.15, y: 3.4, w: 1.9, h: 0.4, fontFace: KFONT, fontSize: 12, bold: true, color: C.AMBER, margin: 0 });
+  const nx = 10.6, ny = 2.05, nw = W-M-10.6, nh = 4.35;
+  card(s, nx, ny, nw, nh, C.CARD, C.RED);
+  s.addText("비동기(async)", { x: nx+0.25, y: ny+0.2, w: nw-0.5, h: 0.45, fontFace: KFONT, fontSize: 16, bold: true, color: C.RED, margin: 0 });
+  s.addText([
+    ln("호스트는 ① 요청 후 곧바로 다음 코드로 갑니다.", C.TEXT, { breakLine: true, paraSpaceAfter: 10 }),
+    ln("결과가 필요하면 SOFTWAIT로 GPU 완료를 기다립니다.", C.TEXT, { breakLine: true, paraSpaceAfter: 10 }),
+    ln("→ 이 비동기 특성은 세션 2(검증)·세션 4(타이밍)에서 자세히.", C.MUTED, { breakLine: true, italic: true }),
+  ], { x: nx+0.25, y: ny+0.8, w: nw-0.5, h: nh-1.0, fontFace: KFONT, fontSize: 13.5, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.15 });
+  s.addNotes("launch = CPU 한 줄 → GPU가 블록을 SM에 분배 → 워프 실행 → 완료. 호스트는 비동기로 리턴한다는 점이 다음 세션들의 복선.");
 })();
 
 // 10 — 정리/함정

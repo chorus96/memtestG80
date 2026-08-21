@@ -1,7 +1,7 @@
 // build_session3.js — 세션 3: 공유 메모리와 병렬 리덕션 (MemtestG80의 백미)
 const { newDeck } = require("./_deck.js");
 const D = newDeck();
-const { p, bg, header, codePanel, ln, card, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
+const { p, bg, header, codePanel, ln, card, arrow, nodeBox, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
 
 titleSlide(
   "CUDA 세미나 · 세션 3",
@@ -58,6 +58,37 @@ titleSlide(
     "→ 경합 없이, 로그 단계로 빠르게",
   ], { fontSize: 15, gap: 11 });
   s.addNotes("전역 원자연산을 피하고 계층적으로 줄이는 것이 GPU 리덕션의 정석. 3단계 구조를 각인시키세요.");
+})();
+
+// 2b — 전역 원자합 vs 계층 리덕션 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "2", "두 가지 합산 전략 · 그림으로", C.TEAL);
+  const colW = (W - 2*M - 0.5) / 2;
+  // LEFT: naive global atomic
+  card(s, M, 1.7, colW, 4.6, C.CARD, C.RED);
+  s.addText("① 전역 원자합 (순진한 방법)", { x: M+0.25, y: 1.85, w: colW-0.5, h: 0.4, fontFace: KFONT, fontSize: 15, bold: true, color: C.RED, margin: 0 });
+  // many threads -> one counter
+  for (let i=0;i<5;i++){ const tx=M+0.35+i*1.02; nodeBox(s, tx, 2.4, 0.9, 0.6, "T"+i, null, C.LINE); }
+  s.addText("… 52만 스레드", { x: M+0.35, y: 3.02, w: colW-0.7, h: 0.3, align: "left", fontFace: KFONT, fontSize: 10.5, italic: true, color: C.MUTED, margin: 0 });
+  const cxL = M+colW/2;
+  for (let i=0;i<5;i++){ const tx=M+0.35+i*1.02+0.45; arrow(s, tx, 3.05, cxL-tx, 1.15, C.RED, { width: 1.2 }); }
+  nodeBox(s, cxL-1.0, 4.25, 2.0, 0.7, "전역 카운터 1개", null, C.RED, "2A1618");
+  s.addText("→ 52만 번 경합·직렬화. 느리고, 락 없으면 값이 뭉개짐.", { x: M+0.25, y: 5.15, w: colW-0.5, h: 0.9, fontFace: KFONT, fontSize: 13, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.15 });
+  // RIGHT: hierarchical reduction
+  const x2 = M+colW+0.5;
+  card(s, x2, 1.7, colW, 4.6, C.CARD, C.TEAL);
+  s.addText("② 계층 리덕션 (MemtestG80)", { x: x2+0.25, y: 1.85, w: colW-0.5, h: 0.4, fontFace: KFONT, fontSize: 15, bold: true, color: C.TEAL, margin: 0 });
+  // threads -> block trees -> blockresults -> CPU
+  for (let b=0;b<3;b++){ const bx=x2+0.4+b*1.9; nodeBox(s, bx, 2.4, 1.7, 0.75, "블록 "+b, "트리 합산", C.TEAL, C.CODEBG);
+    arrow(s, bx+0.85, 3.18, 0, 0.5, C.TEAL, { width: 1.4 });
+    nodeBox(s, bx+0.45, 3.7, 0.8, 0.5, "합", null, C.TEAL, "12212A"); }
+  s.addText("블록당 1개 (총 1024개)", { x: x2+0.4, y: 4.25, w: colW-0.8, h: 0.3, align: "center", fontFace: KFONT, fontSize: 10.5, italic: true, color: C.MUTED, margin: 0 });
+  const cx2 = x2+colW/2;
+  arrow(s, cx2, 4.55, 0, 0.35, C.AMBER, { width: 1.6 });
+  nodeBox(s, cx2-1.3, 4.95, 2.6, 0.6, "CPU 최종 합 (1024개)", null, C.AMBER, "241A16");
+  s.addText("→ 경합 없이 로그 단계로. GPU가 52만→1024, CPU가 마무리.", { x: x2+0.25, y: 5.65, w: colW-0.5, h: 0.5, fontFace: KFONT, fontSize: 13, color: C.TEXT, margin: 0, valign: "top" });
+  s.addNotes("왼쪽의 병목(모든 화살표가 한 점으로)과 오른쪽의 분산(계층적으로 좁아짐)을 시각적으로 대비시키세요.");
 })();
 
 // 4 — __popc / BITSDIFF

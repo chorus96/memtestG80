@@ -1,7 +1,7 @@
 // build_session2.js — 세션 2: 메모리 모델과 쓰기·검증 패턴
 const { newDeck } = require("./_deck.js");
 const D = newDeck();
-const { p, bg, header, codePanel, ln, card, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
+const { p, bg, header, codePanel, ln, card, arrow, nodeBox, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
 
 titleSlide(
   "CUDA 세미나 · 세션 2",
@@ -52,6 +52,38 @@ titleSlide(
   s.addText("MemtestG80은 이 세 계층을 모두 활용합니다 — 그래서 좋은 교재입니다.", {
     x: M, y: 6.55, w: W-2*M, h: 0.4, fontFace: KFONT, fontSize: 13.5, italic: true, color: C.MUTED, align: "center", margin: 0 });
   s.addNotes("테스트 '대상'은 전역 메모리. 공유 메모리는 '도구'로 쓰인다는 구분을 명확히 하세요.");
+})();
+
+// 2b — 메모리 계층 중첩(범위) 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "2", "메모리 계층 · 범위(scope)로 보기", C.TEAL);
+  s.addText("세 계층은 접근 범위가 서로 다릅니다. 큰 범위일수록 느리고, 좁을수록 빠릅니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  // outer: global (all threads)
+  const gx=M, gy=2.1, gw=8.3, gh=4.15;
+  card(s, gx, gy, gw, gh, "141A24", C.AMBER);
+  s.addText("전역 메모리 (global) · 모든 스레드 공유 · 테스트 대상", { x: gx+0.25, y: gy+0.13, w: gw-0.5, h: 0.4, fontFace: KFONT, fontSize: 14, bold: true, color: C.AMBER, margin: 0 });
+  // two blocks inside
+  for (let b=0;b<2;b++){
+    const bx=gx+0.35+b*3.95, by=gy+0.7, bw=3.75, bhh=3.2;
+    card(s, bx, by, bw, bhh, "12212A", C.TEAL);
+    s.addText("공유 메모리 (shared) · 블록 "+b+" 전용", { x: bx+0.2, y: by+0.12, w: bw-0.4, h: 0.35, fontFace: KFONT, fontSize: 12.5, bold: true, color: C.TEAL, margin: 0 });
+    for (let r=0;r<4;r++){
+      const rx=bx+0.25+(r%2)*1.75, ry=by+0.62+Math.floor(r/2)*1.15;
+      nodeBox(s, rx, ry, 1.55, 0.95, "레지스터", "스레드 전용", C.MUTED, C.CODEBG);
+    }
+  }
+  // scale bar on right
+  const sx=W-M-4.3, sy=2.1;
+  card(s, sx, sy, 4.3, 4.15, C.CARD);
+  s.addText("빠르기 / 크기", { x: sx+0.25, y: sy+0.15, w: 4.3-0.5, h: 0.4, fontFace: KFONT, fontSize: 14, bold: true, color: C.TEXT, margin: 0 });
+  const scale = [["레지스터","가장 빠름 · 가장 작음",C.MUTED],["공유 메모리","빠름 · 블록당 수십 KB",C.TEAL],["전역 메모리","느림 · 수 GB (VRAM)",C.AMBER]];
+  let yy=sy+0.7;
+  scale.forEach((r)=>{ nodeBox(s, sx+0.25, yy, 4.3-0.5, 0.95, r[0], r[1], r[2], C.CODEBG); yy+=1.1; });
+  s.addText("테스트 '대상'은 전역 메모리. 공유 메모리는 리덕션의 '도구'입니다(세션 3).", {
+    x: M, y: 6.4, w: W-2*M, h: 0.4, fontFace: KFONT, fontSize: 13, italic: true, color: C.MUTED, align: "center", margin: 0 });
+  s.addNotes("중첩 상자로 '범위'를 시각화: 전역 ⊃ (블록별)공유 ⊃ (스레드별)레지스터. 넓을수록 느리다는 대응을 강조.");
 })();
 
 // 4 — 할당/전송 API (allocate)
@@ -129,6 +161,44 @@ titleSlide(
   s.addText("기본 15초 안에 커널이 안 끝나면 타임아웃 → 0xFFFFFFFE 반환. 디스플레이 구동 GPU의 워치독 대비책.", {
     x: M, y: 4.7, w: W-2*M, h: 0.5, fontFace: KFONT, fontSize: 13.5, italic: true, color: C.MUTED, margin: 0 });
   s.addNotes("cudaStreamQuery로 완료 폴링. 타임아웃 센티넬(0xFFFFFFFE)은 세션 4·5의 오류 관례와 연결됩니다.");
+})();
+
+// 5b — 호스트↔디바이스 시퀀스 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "5", "쓰기·검증의 시간 순서 (시퀀스)", C.TEAL);
+  s.addText("호스트와 디바이스 사이에 명령·데이터가 오가는 순서입니다. 위에서 아래로 시간이 흐릅니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  const xh = M+2.3, xd = W-M-2.3, headY = 2.0, headH = 0.7;
+  card(s, xh-1.6, headY, 3.2, headH, C.CARD, C.TEAL);
+  s.addText("호스트 (CPU)", { x: xh-1.6, y: headY, w: 3.2, h: headH, align: "center", valign: "middle", fontFace: KFONT, fontSize: 14, bold: true, color: C.TEAL, margin: 0 });
+  card(s, xd-1.6, headY, 3.2, headH, C.CARD, C.AMBER);
+  s.addText("디바이스 (GPU)", { x: xd-1.6, y: headY, w: 3.2, h: headH, align: "center", valign: "middle", fontFace: KFONT, fontSize: 14, bold: true, color: C.AMBER, margin: 0 });
+  const llTop = headY+headH+0.05, llBot = 6.15;
+  s.addShape(p.ShapeType.line, { x: xh, y: llTop, w: 0, h: llBot-llTop, line: { color: C.LINE, width: 1.5, dashType: "dash" } });
+  s.addShape(p.ShapeType.line, { x: xd, y: llTop, w: 0, h: llBot-llTop, line: { color: C.LINE, width: 1.5, dashType: "dash" } });
+  const msgs = [
+    ["gpuWriteConstant<<<>>>  (패턴 쓰기)", 1, C.TEAL],
+    ["SOFTWAIT — 커널 완료까지 대기", 0, C.MUTED],
+    ["gpuVerifyConstant<<<>>>  (되읽어 __popc)", 1, C.TEAL],
+    ["cudaMemcpy D2H — 블록별 오류 수 1024개", -1, C.AMBER],
+    ["호스트가 최종 합산 → errorCount", 0, C.TEXT],
+  ];
+  let y = llTop+0.5;
+  msgs.forEach((m) => {
+    if (m[1] === 0) {
+      s.addText(m[0], { x: xh-0.2, y: y-0.18, w: xd-xh+0.4, h: 0.4, align: "center", fontFace: KFONT, fontSize: 12.5, italic: true, color: m[2], margin: 0 });
+    } else {
+      const opt = { color: m[2], width: 2 };
+      if (m[1] > 0) { opt.endArrowType = "triangle"; } else { opt.beginArrowType = "triangle"; }
+      s.addShape(p.ShapeType.line, { x: xh, y, w: xd-xh, h: 0, line: opt });
+      s.addText(m[0], { x: xh, y: y-0.42, w: xd-xh, h: 0.38, align: "center", fontFace: KFONT, fontSize: 12.5, color: m[2], margin: 0 });
+    }
+    y += 0.82;
+  });
+  s.addText("커널 실행 요청(→)은 비동기지만, 결과를 가져오는 cudaMemcpy(←) 전에 검증 커널이 끝나 있어야 합니다.", {
+    x: M, y: 6.4, w: W-2*M, h: 0.4, fontFace: KFONT, fontSize: 13, italic: true, color: C.MUTED, align: "center", margin: 0 });
+  s.addNotes("시퀀스 다이어그램: 화살표 방향이 명령/데이터 흐름. write→wait→verify→memcpy D2H→합산의 시간 순서를 짚으세요.");
 })();
 
 // 7 — Moving Inversions

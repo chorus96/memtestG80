@@ -1,7 +1,7 @@
 // build_session5.js — 세션 5: 객체지향 API·라이브러리 통합·캡스톤
 const { newDeck } = require("./_deck.js");
 const D = newDeck();
-const { p, bg, header, codePanel, ln, card, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
+const { p, bg, header, codePanel, ln, card, arrow, nodeBox, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
 
 titleSlide(
   "CUDA 세미나 · 세션 5",
@@ -56,6 +56,35 @@ titleSlide(
   s.addNotes("한 기능이 세 층으로 나뉘어 재사용·캡슐화됨. 세션 1~4에서 본 함수들을 각 층에 배치해 보이세요.");
 })();
 
+// 2b — 3계층 호출 흐름 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "2", "한 번의 호출이 3계층을 타고 내려간다", C.TEAL);
+  s.addText("사용자가 메서드 하나를 부르면, 호출이 계층을 타고 GPU까지 내려갔다가 결과가 되돌아옵니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  const layers = [
+    ["LAYER 3", "tester.gpuMovingInversionsOnesZeros(e)", "memtestState 메서드", C.AMBER],
+    ["LAYER 2", "gpuWriteConstant / gpuVerifyConstant", "__host__ 함수 — 커널 실행 + 리덕션", C.TEAL],
+    ["LAYER 1", "deviceWriteConstant<<<1024,512>>>", "__global__ 커널 — GPU에서 실행", C.MUTED],
+    ["GPU", "524,288 스레드가 전역 메모리를 검사", "하드웨어", C.AMBER],
+  ];
+  const bx = M+0.5, bw = 8.2, bh = 0.95, y0 = 2.1, gap = 0.42;
+  let y = y0;
+  layers.forEach((L, i) => {
+    card(s, bx, y, bw, bh, i===3 ? "241A16" : C.CARD, L[3]);
+    s.addText(L[0], { x: bx+0.22, y: y+0.1, w: 1.5, h: bh-0.2, valign: "middle", fontFace: "Courier New", fontSize: 12, bold: true, color: L[3], margin: 0 });
+    s.addText(L[1], { x: bx+1.75, y: y+0.12, w: bw-1.95, h: 0.42, fontFace: "Courier New", fontSize: 12.5, color: C.TEXT, margin: 0, valign: "middle" });
+    s.addText(L[2], { x: bx+1.75, y: y+0.52, w: bw-1.95, h: 0.36, fontFace: KFONT, fontSize: 12, color: C.MUTED, margin: 0, valign: "middle" });
+    if (i < 3) arrow(s, bx+bw/2, y+bh+0.02, 0, gap-0.04, L[3]);
+    y += bh+gap;
+  });
+  // return arrow up the right side (bottom → top)
+  const rx = bx+bw+0.55;
+  s.addShape(p.ShapeType.line, { x: rx, y: y0+0.1, w: 0, h: (y-gap) - (y0+0.1), line: { color: C.TEAL, width: 2, beginArrowType: "triangle" } });
+  s.addText("오류 수\n(bool·uint)\n되돌아옴", { x: rx+0.12, y: (y0+y)/2-0.6, w: 1.7, h: 1.2, fontFace: KFONT, fontSize: 11.5, color: C.TEAL, margin: 0, valign: "middle" });
+  s.addNotes("호출은 아래로(요청), 결과는 위로(반환). 각 계층은 자기 몫만 하고 아래에 위임한다는 캡슐화를 강조.");
+})();
+
 // 4 — RAII
 (() => {
   const s = p.addSlide(); bg(s);
@@ -101,6 +130,39 @@ titleSlide(
   s.addText("LGPL: 오픈소스는 정적 링크, 클로즈드 소스는 공유 라이브러리(.so/.dll)로 링크해야 합니다.", {
     x: M, y: 5.75, w: W-2*M, h: 0.5, fontFace: KFONT, fontSize: 13, italic: true, color: C.MUTED, margin: 0 });
   s.addNotes("cli.cu가 바로 이 패턴의 실제 예제(tester.allocate → 각 gpuXxx 호출). 반환 bool로 성공/실패를 판단.");
+})();
+
+// 4b — 라이브러리 임베드 생애주기 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "4", "임베드 생애주기 · 객체가 자원을 감싼다", C.TEAL);
+  s.addText("memtestState 객체 하나가 GPU 자원의 전체 수명을 관리합니다. 스코프를 벗어나면 자동 정리됩니다(RAII).", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  const steps = [
+    ["생성", "memtestState tester;", "생성자: 상수 초기화, 아직 할당 없음", C.MUTED],
+    ["할당", "tester.allocate(mb)", "cudaMalloc으로 VRAM·임시버퍼 확보", C.TEAL],
+    ["검사", "tester.gpuXxx(e) 반복", "각 테스트 실행, 오류 수 누적", C.AMBER],
+    ["판정", "return errors == 0", "bool로 GPU 건전성 반환", C.TEAL],
+    ["소멸", "} // 스코프 종료", "소멸자가 deallocate() 자동 호출", C.AMBER],
+  ];
+  const bw = 2.15, gap = 0.28, y0 = 2.35, bh = 1.7;
+  const totalW = steps.length*bw + (steps.length-1)*gap;
+  const x0 = (13.3 - totalW)/2;
+  steps.forEach((st, i) => {
+    const x = x0 + i*(bw+gap);
+    card(s, x, y0, bw, bh, C.CARD, st[3]);
+    s.addText(st[0], { x: x+0.12, y: y0+0.15, w: bw-0.24, h: 0.4, align: "center", fontFace: KFONT, fontSize: 16, bold: true, color: st[3], margin: 0 });
+    s.addText(st[1], { x: x+0.1, y: y0+0.62, w: bw-0.2, h: 0.55, align: "center", valign: "top", fontFace: "Courier New", fontSize: 10, color: C.TEXT, margin: 0, lineSpacingMultiple: 1.05 });
+    s.addText(st[2], { x: x+0.12, y: y0+1.12, w: bw-0.24, h: 0.5, align: "center", fontFace: KFONT, fontSize: 11, color: C.MUTED, margin: 0, valign: "top", lineSpacingMultiple: 1.05 });
+    if (i < steps.length-1) arrow(s, x+bw+0.02, y0+bh/2, gap-0.04, 0, st[3]);
+  });
+  // bracket showing 자동 해제 covers whole lifetime
+  card(s, x0, 4.5, totalW, 1.0, "241A16", C.AMBER);
+  s.addText([
+    ln("핵심: ", C.AMBER, { bold: true, breakLine: false }),
+    ln("cudaFree를 직접 부르지 않아도, 객체 소멸자가 모든 GPU 메모리를 해제합니다. 예외가 나도, 일찍 return해도 누수가 없습니다.", C.TEXT, { breakLine: true }),
+  ], { x: x0+0.3, y: 4.68, w: totalW-0.6, h: 0.7, fontFace: KFONT, fontSize: 14, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.1 });
+  s.addNotes("생성→할당→검사→판정→소멸의 생애주기. 소멸자가 자동 해제한다는 RAII의 이점을 흐름으로 시각화.");
 })();
 
 // 6 — 오류 센티넬

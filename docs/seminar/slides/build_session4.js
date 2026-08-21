@@ -1,7 +1,7 @@
 // build_session4.js — 세션 4: 테스트 알고리즘과 성능 측정
 const { newDeck } = require("./_deck.js");
 const D = newDeck();
-const { p, bg, header, codePanel, ln, card, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
+const { p, bg, header, codePanel, ln, card, arrow, nodeBox, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
 
 titleSlide(
   "CUDA 세미나 · 세션 4",
@@ -92,6 +92,32 @@ titleSlide(
   s.addNotes("핵심: 테스트마다 다른 건 '패턴 생성'뿐, 쓰기·검증·리덕션은 공통. 이 재사용이 좋은 설계의 증거입니다.");
 })();
 
+// 3b — Walking 비트 진행 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "3", "Walking 비트가 걷는 모습", C.TEAL);
+  s.addText("shift가 0→7로 증가하면 켜진 비트(1) 하나가 한 칸씩 이동합니다. 각 위상에서 그 비트와 이웃을 검사합니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  const rows = 5;                 // shift 0..4 표시
+  const cell = 0.62, gap = 0.1, x0 = M+1.7, y0 = 2.15, rh = 0.82;
+  for (let r=0;r<rows;r++){
+    const y = y0 + r*rh;
+    s.addText("shift="+r, { x: M, y: y+0.02, w: 1.5, h: cell, valign: "middle", align: "right", fontFace: "Courier New", fontSize: 13, color: C.MUTED, margin: 0 });
+    for (let b=0;b<8;b++){
+      const on = (b === (7-r));   // 왼쪽이 상위비트로 보이도록 7-r
+      s.addShape(p.ShapeType.roundRect, { x: x0+b*(cell+gap), y, w: cell, h: cell, rectRadius: 0.05,
+        fill: { color: on ? C.AMBER : C.CODEBG }, line: { color: on ? C.AMBER : C.LINE, width: 1 } });
+      s.addText(on ? "1" : "0", { x: x0+b*(cell+gap), y, w: cell, h: cell, align: "center", valign: "middle", fontFace: "Courier New", fontSize: 15, bold: on, color: on ? C.BG : C.FAINT, margin: 0 });
+    }
+    const pat = (1 << r); const dup = (pat | (pat<<8) | (pat<<16) | (pat<<24)) >>> 0;
+    s.addText("0x"+dup.toString(16).toUpperCase().padStart(8,"0"), { x: x0+8*(cell+gap)+0.2, y: y+0.02, w: 2.3, h: cell, valign: "middle", fontFace: "Courier New", fontSize: 13, color: C.TEAL, margin: 0 });
+  }
+  s.addText("← 8비트 패턴을 32비트 워드로 복제한 값", { x: x0+8*(cell+gap)+0.2, y: y0+rows*rh+0.05, w: 4.5, h: 0.35, fontFace: KFONT, fontSize: 11.5, italic: true, color: C.MUTED, margin: 0 });
+  s.addText("이 표를 손으로 채워보는 것이 Lab 4 Exercise 2입니다. shift 0~7까지 8칸을 모두 훑습니다.", {
+    x: M, y: 6.4, w: W-2*M, h: 0.4, fontFace: KFONT, fontSize: 13, italic: true, color: C.MUTED, align: "center", margin: 0 });
+  s.addNotes("켜진 비트가 대각선으로 내려가는 모습이 'walking'. 오른쪽 16진수는 워드 복제 결과로, 코드와 대조하게 하세요.");
+})();
+
 // 5 — Random & Modulo
 (() => {
   const s = p.addSlide(); bg(s);
@@ -164,6 +190,29 @@ titleSlide(
     y += 0.72;
   });
   s.addNotes("CUDA 이벤트 대신 밀리초 타이머 + cudaThreadSynchronize를 씀. 비동기성이 왜 함정인지가 핵심 교훈입니다.");
+})();
+
+// 6b — D2D 대역폭 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "6", "대역폭은 왜 ×2인가 · 그림으로", C.TEAL);
+  s.addText("device-to-device 복사는 같은 VRAM 안에서 읽기와 쓰기를 동시에 합니다. 그래서 실효 전송량은 2배입니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  const bw = 3.6, bh = 1.4, y0 = 2.6;
+  const sxx = M+1.0, dxx = W-M-1.0-bw;
+  nodeBox(s, sxx, y0, bw, bh, "src (원본 영역)", "VRAM 읽기 (read)", C.TEAL, C.CODEBG);
+  nodeBox(s, dxx, y0, bw, bh, "dst (대상 영역)", "VRAM 쓰기 (write)", C.AMBER, C.CODEBG);
+  arrow(s, sxx+bw+0.1, y0+0.45, dxx-(sxx+bw)-0.2, 0, C.TEAL, { width: 3 });
+  s.addText("① 읽기", { x: sxx+bw, y: y0+0.02, w: dxx-(sxx+bw), h: 0.35, align: "center", fontFace: KFONT, fontSize: 12.5, bold: true, color: C.TEAL, margin: 0 });
+  arrow(s, sxx+bw+0.1, y0+0.95, dxx-(sxx+bw)-0.2, 0, C.AMBER, { width: 3 });
+  s.addText("② 쓰기", { x: sxx+bw, y: y0+1.02, w: dxx-(sxx+bw), h: 0.35, align: "center", fontFace: KFONT, fontSize: 12.5, bold: true, color: C.AMBER, margin: 0 });
+  s.addText("cudaMemcpy(dst, src, bytes, DeviceToDevice)", { x: M, y: y0+bh+0.25, w: W-2*M, h: 0.4, align: "center", fontFace: "Courier New", fontSize: 13, color: C.MUTED, margin: 0 });
+  card(s, M, 5.15, W-2*M, 1.2, "241A16", C.AMBER);
+  s.addText([
+    ln("bw = 2.0 × (전송 MB × 반복) / 초", C.AMBER2, { bold: true, breakLine: true, paraSpaceAfter: 4 }),
+    ln("★ D2D memcpy는 비동기 → cudaThreadSynchronize() 후에 시간을 재야 정확합니다.", C.TEXT, { breakLine: true }),
+  ], { x: M+0.3, y: 5.35, w: W-2*M-0.6, h: 0.9, fontFace: KFONT, fontSize: 14.5, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.15 });
+  s.addNotes("읽기 화살표 + 쓰기 화살표 두 개로 '왜 ×2'를 시각화. 동기화 함정은 Lab 4 Exercise 4에서 직접 재현합니다.");
 })();
 
 // 8 — 실습 미리보기

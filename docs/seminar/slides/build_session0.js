@@ -1,7 +1,7 @@
 // build_session0.js — 세션 0: 환경 구축과 큰 그림
 const { newDeck } = require("./_deck.js");
 const D = newDeck();
-const { p, bg, header, codePanel, ln, card, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
+const { p, bg, header, codePanel, ln, card, arrow, nodeBox, bullets, titleSlide, outroSlide, C, KFONT, MONO, W, M } = D;
 
 // 1 — Title
 titleSlide(
@@ -52,6 +52,36 @@ titleSlide(
     ln("비트가 뒤집혀도 아무도 모른 채 잘못된 값이 계산에 섞인다 — 오버클럭·발열·전압 마진 부족이 원인. MemtestG80은 이 조용한 오류를 능동적으로 찾아낸다.", C.TEXT, { breakLine: true }),
   ], { x: M+0.3, y: 5.5, w: W-2*M-0.6, h: 1.1, fontFace: KFONT, fontSize: 15, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.15 });
   s.addNotes("SIMT = 같은 명령을 수천 스레드가 서로 다른 데이터에 실행. ECC 부재가 이 도구의 존재 이유임을 강조하세요.");
+})();
+
+// 3b — Host <-> Device 하드웨어 블록 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "2", "하드웨어 구조 · 호스트 ↔ 디바이스", C.TEAL);
+  s.addText("CPU(호스트)와 GPU(디바이스)는 물리적으로 분리된 프로세서·메모리를 가지며, PCIe 버스로 연결됩니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  // Host box
+  const hx=M, hy=2.15, hw=4.6, hh=4.05;
+  card(s, hx, hy, hw, hh, C.CARD, C.TEAL);
+  s.addText("호스트 (CPU)", { x: hx+0.25, y: hy+0.15, w: hw-0.5, h: 0.4, fontFace: KFONT, fontSize: 15, bold: true, color: C.TEAL, margin: 0 });
+  // few big cores
+  for (let i=0;i<4;i++){ const cx=hx+0.35+(i%2)*2.05, cy=hy+0.7+Math.floor(i/2)*0.95;
+    nodeBox(s, cx, cy, 1.85, 0.8, "코어", null, C.LINE); }
+  nodeBox(s, hx+0.35, hy+2.7, hw-0.7, 1.05, "시스템 메모리 (RAM)", "malloc — hostTempMem", C.MUTED, C.CODEBG);
+  // Device box
+  const dx=W-M-5.5, dy=2.15, dw=5.5, dh=4.05;
+  card(s, dx, dy, dw, dh, C.CARD, C.AMBER);
+  s.addText("디바이스 (GPU)", { x: dx+0.25, y: dy+0.15, w: dw-0.5, h: 0.4, fontFace: KFONT, fontSize: 15, bold: true, color: C.AMBER, margin: 0 });
+  for (let i=0;i<6;i++){ const cx=dx+0.35+(i%3)*1.63, cy=dy+0.7+Math.floor(i/3)*0.9;
+    nodeBox(s, cx, cy, 1.5, 0.75, "SM", null, C.LINE); }
+  s.addText("… 수십 개의 SM (수천 코어)", { x: dx+0.35, y: dy+2.32, w: dw-0.7, h: 0.3, fontFace: KFONT, fontSize: 10.5, italic: true, color: C.MUTED, margin: 0 });
+  nodeBox(s, dx+0.35, dy+2.7, dw-0.7, 1.05, "전역 메모리 (VRAM) — 테스트 대상", "cudaMalloc — devTestMem", C.AMBER, "241A16");
+  // PCIe arrow between
+  arrow(s, hx+hw+0.05, hy+hh/2, (dx)-(hx+hw)-0.1, 0, C.TEAL, { width: 3, beginArrowType: "triangle", endArrowType: "triangle" });
+  s.addText("PCIe\ncudaMemcpy", { x: hx+hw+0.02, y: hy+hh/2-0.75, w: (dx)-(hx+hw), h: 0.6, align: "center", fontFace: KFONT, fontSize: 11, color: C.MUTED, margin: 0 });
+  s.addText("MemtestG80은 VRAM(전역 메모리)을 검사하고, 오류 수만 PCIe로 CPU에 가져와 합산합니다.", {
+    x: M, y: 6.4, w: W-2*M, h: 0.4, fontFace: KFONT, fontSize: 13, italic: true, color: C.MUTED, align: "center", margin: 0 });
+  s.addNotes("호스트/디바이스가 분리된 메모리를 가진다는 점, 둘 사이 이동은 반드시 cudaMemcpy(PCIe)로 이뤄진다는 점이 핵심.");
 })();
 
 // 4 — MemtestG80이란
@@ -150,6 +180,42 @@ titleSlide(
   s.addText("테스트 영역은 2MB 단위로 반올림. 오류가 있으면 종료 코드가 non-zero → 스크립트 연동이 쉽습니다.", {
     x: M, y: 6.4, w: W-2*M, h: 0.5, fontFace: KFONT, fontSize: 13.5, italic: true, color: C.MUTED, margin: 0 });
   s.addNotes("첫 줄의 대역폭 측정 후 iteration 루프가 돈다는 구조를 보여주세요. 각 테스트는 세션 4에서 하나씩 해부합니다.");
+})();
+
+// 7b — 프로그램의 큰 흐름 다이어그램
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "6", "프로그램의 큰 흐름", C.TEAL);
+  s.addText("main()이 하는 일의 지도입니다. 앞으로 6회에 걸쳐 각 단계를 안쪽까지 파고듭니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+  const steps = [
+    ["① GPU 선택·초기화", "cudaSetDevice, deviceProps", C.TEAL, "세션 0"],
+    ["② 메모리 할당", "tester.allocate(MB)", C.AMBER, "세션 2"],
+    ["③ 대역폭 측정", "gpuMemoryBandwidth", C.TEAL, "세션 4"],
+    ["④ iteration 루프", "13종 테스트 × maxIters", C.AMBER, "세션 1~4"],
+    ["⑤ 오류 합산·종료", "Final error count", C.TEAL, "세션 3·5"],
+  ];
+  const bw=2.15, gap=0.28, y0=2.35, bh=1.5;
+  const totalW = steps.length*bw + (steps.length-1)*gap;
+  const x0 = (13.3 - totalW)/2;
+  steps.forEach((st, i) => {
+    const x = x0 + i*(bw+gap);
+    card(s, x, y0, bw, bh, C.CARD, st[2]);
+    s.addText(st[0], { x: x+0.12, y: y0+0.18, w: bw-0.24, h: 0.7, align: "center", valign: "top", fontFace: KFONT, fontSize: 14, bold: true, color: C.TEXT, margin: 0, lineSpacingMultiple: 1.05 });
+    s.addText(st[1], { x: x+0.12, y: y0+0.85, w: bw-0.24, h: 0.35, align: "center", fontFace: "Courier New", fontSize: 9.5, color: C.MUTED, margin: 0 });
+    s.addText(st[3], { x: x+0.12, y: y0+bh-0.32, w: bw-0.24, h: 0.28, align: "center", fontFace: KFONT, fontSize: 10, italic: true, color: st[2], margin: 0 });
+    if (i < steps.length-1) arrow(s, x+bw+0.02, y0+bh/2, gap-0.04, 0, st[2]);
+  });
+  // loop-back arrow under step 4
+  const lx = x0 + 3*(bw+gap) + bw/2;
+  arrow(s, lx, y0+bh+0.55, 0, -0.5, C.AMBER);
+  s.addText("maxIters회 반복", { x: lx-1.2, y: y0+bh+0.55, w: 2.4, h: 0.35, align: "center", fontFace: KFONT, fontSize: 11, italic: true, color: C.AMBER, margin: 0 });
+  card(s, M, 5.3, W-2*M, 1.1, "241A16", C.AMBER);
+  s.addText([
+    ln("핵심: ④번 iteration 루프가 이 도구의 심장입니다. ", C.AMBER, { bold: true, breakLine: false }),
+    ln("한 번 돌 때마다 13종 테스트가 순서대로 실행되고, 오류 수가 누적됩니다.", C.TEXT, { breakLine: true }),
+  ], { x: M+0.3, y: 5.5, w: W-2*M-0.6, h: 0.7, fontFace: KFONT, fontSize: 14.5, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.1 });
+  s.addNotes("프로그램 전체 지도. 각 단계 옆에 '어느 세션에서 파고드는지'를 표기해 로드맵과 연결하세요.");
 })();
 
 // 8 — 하드/소프트 오류
