@@ -231,6 +231,67 @@ titleSlide(
   s.addNotes("blockIdx/threadIdx는 스레드마다 다름, blockDim/gridDim은 모두 같음 — 이 대비가 주소 계산의 핵심입니다.");
 })();
 
+// 4b — 스레드 레이아웃 & 인덱싱 (block diagram)
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "4", "스레드 레이아웃 & 인덱싱 · 524,288개의 좌표계", C.TEAL);
+  s.addText("그리드는 2단(블록→스레드) 구조. 앞의 내장 변수로 각 스레드는 전체에서 자기 번호(globalIdx)를 계산합니다.", {
+    x: M, y: 1.42, w: W-2*M, h: 0.4, fontFace: KFONT, fontSize: 13.5, color: C.MUTED, margin: 0 });
+
+  // --- 그리드 스트립 (1024 블록) ---
+  const mx = M, mw = W-2*M, seg = mw/8;
+  const gy = 2.15, gh = 0.72;
+  s.addText("그리드 (gridDim.x = 1024 블록)", { x: mx, y: gy-0.32, w: mw, h: 0.3, fontFace: KFONT, fontSize: 12, bold: true, color: C.AMBER, margin: 0 });
+  for (let i=0;i<8;i++) {
+    const hot = (i===1);
+    const label = i<7 ? ("블록 "+i) : "…  1023";
+    s.addShape(p.ShapeType.roundRect, { x: mx+i*seg+0.03, y: gy, w: seg-0.06, h: gh, rectRadius: 0.04,
+      fill: { color: hot ? "241A16" : C.CODEBG }, line: { color: hot ? C.AMBER2 : C.AMBER, width: hot ? 2 : 1 } });
+    s.addText(label, { x: mx+i*seg, y: gy, w: seg, h: gh, align: "center", valign: "middle", fontFace: MONO, fontSize: 12, bold: hot, color: hot ? C.AMBER2 : C.TEXT, margin: 0 });
+  }
+
+  // --- 확대 연결 (블록 1 → 스레드 스트립) ---
+  arrow(s, mx+1.5*seg, gy+gh, 0, 0.42, C.MUTED, { width: 2 });
+  s.addText("블록 1개를 512 스레드로 확대", { x: mx+1.5*seg+0.2, y: gy+gh+0.02, w: 4.2, h: 0.35, valign: "middle", fontFace: KFONT, fontSize: 11.5, italic: true, color: C.MUTED, margin: 0 });
+
+  // --- 스레드 스트립 (512 스레드) ---
+  const ty = gy+gh+0.62, th = 0.72;
+  s.addText("한 블록 (blockDim.x = 512 스레드)", { x: mx, y: ty-0.32, w: mw, h: 0.3, fontFace: KFONT, fontSize: 12, bold: true, color: C.TEAL, margin: 0 });
+  for (let i=0;i<8;i++) {
+    const label = i<7 ? ("T"+i) : "…  511";
+    s.addShape(p.ShapeType.roundRect, { x: mx+i*seg+0.03, y: ty, w: seg-0.06, h: th, rectRadius: 0.04,
+      fill: { color: C.CODEBG }, line: { color: C.TEAL, width: 1 } });
+    s.addText(label, { x: mx+i*seg, y: ty, w: seg, h: th, align: "center", valign: "middle", fontFace: MONO, fontSize: 13, bold: true, color: C.TEXT, margin: 0 });
+  }
+
+  // --- globalIdx 공식 패널 ---
+  const fy = ty+th+0.35;
+  codePanel(s, M, fy, W-2*M, 0.92, [
+    ln("globalIdx = blockIdx.x * blockDim.x + threadIdx.x", C.AMBER2, { breakLine: true }),
+    ln("예) 블록 1, 스레드 2  →  1 * 512 + 2 = 514      (전체 524,288개 중 514번째 스레드)", C.TEAL, { breakLine: true }),
+  ], { fontSize: 13.5, lineSpacing: 1.15 });
+
+  // --- 두 카드: 인덱싱 규칙 / 메모리 분할 ---
+  const cy = fy+1.1, ch = 1.45, cw = (W-2*M-0.4)/2;
+  card(s, M, cy, cw, ch, C.CARD, C.TEAL);
+  s.addText("인덱싱 규칙", { x: M+0.2, y: cy+0.1, w: cw-0.4, h: 0.32, fontFace: KFONT, fontSize: 13, bold: true, color: C.TEAL, margin: 0 });
+  s.addText([
+    ln("blockIdx.x", C.AMBER, { breakLine: false }), ln(" 내 블록(0~1023) · ", C.TEXT, { breakLine: false }),
+    ln("threadIdx.x", C.AMBER, { breakLine: false }), ln(" 블록 내(0~511)\n", C.TEXT, { breakLine: true }),
+    ln("1024 블록 × 512 스레드 = ", C.TEXT, { breakLine: false }), ln("524,288 스레드", C.AMBER2, { bold: true, breakLine: true }),
+  ], { x: M+0.2, y: cy+0.48, w: cw-0.4, h: 0.9, fontFace: KFONT, fontSize: 12.5, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.15 });
+
+  card(s, M+cw+0.4, cy, cw, ch, C.CARD, C.AMBER);
+  s.addText("메모리 분할 (다음 슬라이드로 연결)", { x: M+cw+0.6, y: cy+0.1, w: cw-0.4, h: 0.32, fontFace: KFONT, fontSize: 13, bold: true, color: C.AMBER, margin: 0 });
+  s.addText([
+    ln("블록 b 는 ", C.TEXT, { breakLine: false }), ln("N·512 word", C.AMBER2, { breakLine: false }), ln(" 구역을 담당\n", C.TEXT, { breakLine: true }),
+    ln("그 안에서 반복 ", C.TEXT, { breakLine: false }), ln("i·512 + threadIdx.x", C.TEAL, { breakLine: false }), ln(" 로 인터리빙\n", C.TEXT, { breakLine: true }),
+    ln("→ 이 좌표 계산이 곧 ", C.TEXT, { breakLine: false }), ln("THREAD_ADDRESS", C.AMBER, { bold: true, breakLine: false }), ln(" 매크로", C.TEXT, { breakLine: true }),
+  ], { x: M+cw+0.6, y: cy+0.48, w: cw-0.4, h: 0.9, fontFace: KFONT, fontSize: 12.5, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.12 });
+
+  s.addNotes("2단 레이아웃(그리드→블록→스레드)과 globalIdx 계산을 한 장에 시각화. 다음 슬라이드 THREAD_ADDRESS의 전제입니다.");
+})();
+
 // 6 — THREAD_ADDRESS 해부
 (() => {
   const s = p.addSlide(); bg(s);
