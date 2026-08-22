@@ -33,6 +33,55 @@ titleSlide(
   s.addNotes("이 회차가 MemtestG80를 교재로 택한 진짜 이유입니다 — 교과서적 병렬 리덕션이 실코드에 있습니다.");
 })();
 
+// 1b — CUDA 메모리 계층 조망 (공유 메모리의 위치) + MemtestG80 매핑
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "1", "CUDA 메모리 계층 · 공유 메모리는 어디에 있나", C.TEAL);
+  s.addText("위로 갈수록 빠르고 작으며(스레드 전용), 아래로 갈수록 느리고 크다(공유 범위 넓음). 이 세션의 주인공은 2번 계층 — 공유 메모리.", {
+    x: M, y: 1.45, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14, color: C.MUTED, margin: 0 });
+
+  // 왼쪽: 계층 스택 (빠름·작음 → 느림·큼)
+  const lx = M, lw = 6.1, ty0 = 2.0, th = 0.82, gap = 0.16;
+  const tiers = [
+    ["① 레지스터 (register)", "스레드 전용 · 가장 빠름 · 수 KB/스레드", C.AMBER, C.CODEBG],
+    ["② 공유 메모리 / L1 (shared)", "블록 전용 · 매우 빠름 · 수십 KB/블록  ★", C.TEAL, "12212A"],
+    ["③ L2 캐시", "전 SM 공유 · 빠름 · 수 MB", C.MUTED, C.CODEBG],
+    ["④ 전역 메모리 (global · VRAM)", "모든 스레드 · 느림 · 수 GB · 테스트 대상", C.AMBER, "241A16"],
+    ["⑤ 호스트 메모리 (system RAM)", "CPU 측 · PCIe 경유로만 접근", C.FAINT, C.CODEBG],
+  ];
+  tiers.forEach((t, i) => {
+    const y = ty0 + i*(th+gap);
+    nodeBox(s, lx, y, lw, th, t[0], t[1], t[2], t[3]);
+    // ④↔⑤ 사이 PCIe 표시
+    if (i === 3) {
+      s.addText("▲ 온칩/디바이스     ▼ PCIe (cuMemcpy/cudaMemcpy)", { x: lx+0.1, y: y+th-0.02, w: lw-0.2, h: gap+0.04, align: "center", fontFace: KFONT, fontSize: 9, italic: true, color: C.FAINT, margin: 0 });
+    }
+  });
+  // 속도/용량 축 화살표 (왼쪽 여백)
+  s.addText("빠름·작음", { x: lx-0.02, y: ty0-0.02, w: 1.2, h: 0.3, fontFace: KFONT, fontSize: 9, color: C.MUTED, margin: 0 });
+  s.addText("느림·큼",   { x: lx-0.02, y: ty0+5*(th+gap)-0.34, w: 1.2, h: 0.3, fontFace: KFONT, fontSize: 9, color: C.MUTED, margin: 0 });
+
+  // 오른쪽: MemtestG80 대응
+  const rx = lx+lw+0.4, rw = W-M-(lx+lw+0.4);
+  card(s, rx, 2.0, rw, 4.62, C.CARD, C.AMBER);
+  s.addText("MemtestG80에서의 대응", { x: rx+0.25, y: 2.15, w: rw-0.5, h: 0.4, fontFace: KFONT, fontSize: 15, bold: true, color: C.AMBER, margin: 0 });
+  const maps = [
+    ["레지스터", "커널 지역변수 — uint i, value, pattern", C.AMBER],
+    ["공유 메모리", "threadErrorCount[] (리덕션), LCG shmem, randomBlock", C.TEAL],
+    ["전역 메모리", "devTestMem (시험 대상), devTempMem (블록 오류)", C.AMBER],
+    ["호스트 메모리", "hostTempMem — 1024개 블록합 최종 합산", C.MUTED],
+  ];
+  let my = 2.7;
+  maps.forEach((m) => {
+    s.addText(m[0], { x: rx+0.25, y: my, w: rw-0.5, h: 0.32, fontFace: KFONT, fontSize: 13.5, bold: true, color: m[2], margin: 0 });
+    s.addText(m[1], { x: rx+0.25, y: my+0.32, w: rw-0.5, h: 0.55, fontFace: KFONT, fontSize: 12.5, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.05 });
+    my += 1.0;
+  });
+  s.addText("리덕션은 ④전역(느림)을 최소로 왕복하고 ②공유(빠름)에서 접어 합칩니다 — 그래서 빠릅니다.", {
+    x: rx+0.25, y: 6.15, w: rw-0.5, h: 0.45, fontFace: KFONT, fontSize: 11.5, italic: true, color: C.MUTED, margin: 0, valign: "top", lineSpacingMultiple: 1.05 });
+  s.addNotes("메모리 계층 전체 조망. 세션 2가 '범위(scope) 중첩'으로 봤다면, 여기선 '속도 계층 + MemtestG80 버퍼 대응'으로 봅니다. 공유 메모리가 리덕션의 무대임을 강조.");
+})();
+
 // 3 — 문제 제기: 52만 개를 어떻게 합치나
 (() => {
   const s = p.addSlide(); bg(s);
