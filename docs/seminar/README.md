@@ -23,7 +23,7 @@
 | [`slides/세션4_테스트알고리즘과_성능측정.pptx`](slides/) | 세션 4 슬라이드 덱 (11매, 다이어그램 포함) | ✅ 완성 |
 | [`세션5_실습랩_캡스톤.md`](세션5_실습랩_캡스톤.md) | 세션 5 실습 + 캡스톤 프로젝트 가이드 | ✅ 완성 |
 | [`slides/세션5_객체지향API_라이브러리_캡스톤.pptx`](slides/) | 세션 5 슬라이드 덱 (11매, 다이어그램 포함) | ✅ 완성 |
-| `slides/build_session{0..5}.js` | 위 덱을 생성한 pptxgenjs 스크립트 (재생성용) | ✅ |
+| `slides/build_session{0..5}.js` · `slides/build_appendix1.js` | 위 덱을 생성한 pptxgenjs 스크립트 (재생성용) | ✅ |
 | `slides/_deck.js` | 슬라이드 공통 팔레트·헬퍼 | ✅ |
 | [`memtestG80-seminar.html`](memtestG80-seminar.html) | 요약 발표본 (단일 HTML 덱, 16매) | ✅ 보너스 |
 | [`paper/haque_pande_2009_memtestG80.pdf`](paper/) | 원논문 PDF — *Hard Data on Soft Errors* (arXiv:0910.0505v2) | ✅ 추가 |
@@ -31,6 +31,7 @@
 | [`epub/`](epub/) | 위 EPUB의 빌드 소스 (재패키징용) | ✅ |
 | [`presentation/`](presentation/) | LACSS 2010 발표 슬라이드 한국어판 (PPTX 21매, Fermi·AMD 확장) + 원본 PDF | ✅ 완성 |
 | [`부록1_DriverAPI_빌드와_커널로딩.md`](부록1_DriverAPI_빌드와_커널로딩.md) | **부록 1** — `driver_api/` 분석: 빌드 과정(cubin) & 커널 로딩(cuModuleLoad→cuLaunchKernel), block diagram 8종 | ✅ 부록 |
+| [`slides/부록1_DriverAPI_빌드와_커널로딩.pptx`](slides/) | 부록 1 슬라이드 덱 (14매, 다이어그램 포함 — 빌드 파이프라인 · 커널 로딩 시퀀스) | ✅ 부록 |
 
 **시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1 + 발표 PPTX 한국어판 1 + 심화 부록 1.
 
@@ -58,6 +59,7 @@ node build_session2.js     # 세션2_메모리모델과_쓰기검증.pptx 생성
 node build_session3.js     # 세션3_공유메모리와_병렬리덕션.pptx 생성
 node build_session4.js     # 세션4_테스트알고리즘과_성능측정.pptx 생성
 node build_session5.js     # 세션5_객체지향API_라이브러리_캡스톤.pptx 생성
+node build_appendix1.js    # 부록1_DriverAPI_빌드와_커널로딩.pptx 생성
 ```
 
 > 슬라이드는 한글 폰트로 **맑은 고딕(Malgun Gothic)** 을, 코드에는 **Courier New** 를 사용합니다.
