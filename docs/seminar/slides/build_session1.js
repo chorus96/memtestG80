@@ -137,6 +137,75 @@ titleSlide(
   s.addNotes("실행 계층(앞 슬라이드)이 하드웨어에 매핑되는 관점. Grid→GPU, Block→SM, Warp(32)→스케줄러(SIMT), Thread→코어. 워프 개념이 다음 coalescing 슬라이드의 전제입니다.");
 })();
 
+// 3d — SM 내부 구조 (하나의 SM 확대도)
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "3", "SM 내부 구조 · 하나의 SM 을 들여다보면", C.TEAL);
+  s.addText("앞 슬라이드의 'Block → SM' 를 확대한 그림입니다. 블록은 이 SM 안에서 워프 단위로 스케줄되어 실행됩니다.", {
+    x: M, y: 1.45, w: W-2*M, h: 0.4, fontFace: KFONT, fontSize: 13.5, color: C.MUTED, margin: 0 });
+
+  // SM 외곽 박스
+  const bx = M, by = 1.9, bw = 8.5, bh = 4.75;
+  card(s, bx, by, bw, bh, C.CARD, C.AMBER);
+  s.addText("SM (Streaming Multiprocessor)", { x: bx+0.2, y: by+0.08, w: bw-0.4, h: 0.3, fontFace: KFONT, fontSize: 12.5, bold: true, color: C.AMBER, margin: 0 });
+
+  const ix = bx+0.2, iw = bw-0.4;   // 내부 영역 x0, 폭
+  const box = function(x,y,w,h,label,color,fill,fs) {
+    s.addShape(p.ShapeType.roundRect, { x, y, w, h, rectRadius: 0.04, fill: { color: fill||C.CODEBG }, line: { color: color||C.LINE, width: 1 } });
+    s.addText(label, { x: x+0.06, y, w: w-0.12, h, align: "center", valign: "middle", fontFace: KFONT, fontSize: fs||10.5, bold: true, color: color||C.TEXT, margin: 0 });
+  };
+
+  // ① 명령어 캐시
+  box(ix, by+0.44, iw, 0.36, "명령어 캐시 (Instruction Cache)", C.AMBER, "241A16", 11);
+  // ② 워프 스케줄러 ×2
+  const halfW = (iw-0.15)/2;
+  box(ix,           by+0.9, halfW, 0.42, "워프 스케줄러", C.AMBER, "241A16", 11);
+  box(ix+halfW+0.15,by+0.9, halfW, 0.42, "워프 스케줄러", C.AMBER, "241A16", 11);
+  // ③ 디스패치 유닛 ×2
+  box(ix,           by+1.38, halfW, 0.36, "디스패치 유닛 (Dispatch)", C.AMBER, "241A16", 10);
+  box(ix+halfW+0.15,by+1.38, halfW, 0.36, "디스패치 유닛 (Dispatch)", C.AMBER, "241A16", 10);
+  // ④ 레지스터 파일
+  box(ix, by+1.82, iw, 0.36, "레지스터 파일 (Register File · 32,768 × 32-bit)", C.TEAL, "12212A", 11);
+
+  // ⑤ 코어 배열 + LD/ST
+  const coreY = by+2.3, coreH = 1.45;
+  const coresW = iw*0.66;
+  s.addText("CUDA 코어 × 32", { x: ix, y: coreY-0.02, w: coresW, h: 0.24, fontFace: KFONT, fontSize: 10, bold: true, color: C.TEXT, margin: 0 });
+  const cols = 8, rows = 4;
+  const cw = (coresW - (cols-1)*0.06)/cols, ch = (coreH-0.26 - (rows-1)*0.06)/rows;
+  for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) {
+    const x = ix + c*(cw+0.06), y = coreY+0.24 + r*(ch+0.06);
+    s.addShape(p.ShapeType.roundRect, { x, y, w: cw, h: ch, rectRadius: 0.03, fill: { color: C.CODEBG }, line: { color: C.LINE, width: 0.75 } });
+    s.addText("Core", { x, y, w: cw, h: ch, align: "center", valign: "middle", fontFace: "Courier New", fontSize: 7, color: C.MUTED, margin: 0 });
+  }
+  // LD/ST 열
+  const lsx = ix+coresW+0.15, lsw = iw-coresW-0.15;
+  box(lsx, coreY+0.24, lsw, coreH-0.26, "로드/스토어\n(LD/ST) × 16", C.AMBER2, "241A16", 11);
+
+  // ⑥ 공유 메모리 / L1 캐시
+  box(ix, by+bh-0.62, iw, 0.5, "공유 메모리 / L1 캐시 (64 KB · 구성 가능)", C.TEAL, "12212A", 11);
+
+  // 오른쪽: MemtestG80 대응 패널
+  const rx = bx+bw+0.35, rw = W-M-(bx+bw+0.35);
+  card(s, rx, by, rw, bh, C.CARD, C.TEAL);
+  s.addText("MemtestG80 대응", { x: rx+0.22, y: by+0.12, w: rw-0.44, h: 0.35, fontFace: KFONT, fontSize: 13, bold: true, color: C.TEAL, margin: 0 });
+  const maps = [
+    ["명령어 캐시", "커널 명령어 공급"],
+    ["워프 스케줄러·디스패치", "워프(32스레드) 선택·발행 (SIMT)"],
+    ["레지스터 파일", "커널 지역변수 (value, i, pattern)"],
+    ["CUDA 코어", "스레드 연산 (a*value+c, __popc)"],
+    ["LD/ST", "전역 메모리 접근 (coalescing)"],
+    ["공유 메모리 / L1", "threadErrorCount[] · 트리 리덕션"],
+  ];
+  let my = by+0.6;
+  maps.forEach((m) => {
+    s.addText(m[0], { x: rx+0.22, y: my, w: rw-0.44, h: 0.26, fontFace: KFONT, fontSize: 11.5, bold: true, color: C.AMBER, margin: 0 });
+    s.addText(m[1], { x: rx+0.22, y: my+0.26, w: rw-0.44, h: 0.42, fontFace: KFONT, fontSize: 10.5, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.02 });
+    my += 0.72;
+  });
+  s.addNotes("Fermi 세대 SM 내부 구조: 명령어 캐시 → 워프 스케줄러·디스패치 → 레지스터 파일 → CUDA 코어/LD/ST → 공유 메모리·L1. 각 구성요소를 MemtestG80 커널 동작에 대응시켜 설명.");
+})();
+
 // 5 — 내장 변수
 (() => {
   const s = p.addSlide(); bg(s);
