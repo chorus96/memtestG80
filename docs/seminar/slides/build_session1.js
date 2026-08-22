@@ -103,6 +103,40 @@ titleSlide(
   s.addNotes("각 스레드는 (blockIdx, threadIdx)로 자기 위치를 안다. cuda_memtest는 블록당 1개였지만 MemtestG80은 512개 — 이 차이가 리덕션·coalescing으로 이어짐.");
 })();
 
+// 3c — 실행 모델: 소프트웨어(논리) → 하드웨어(물리) 매핑 (워프/SM/SIMT)
+(() => {
+  const s = p.addSlide(); bg(s);
+  header(s, "3", "실행 모델 · 소프트웨어 → 하드웨어 매핑", C.TEAL);
+  s.addText("논리적 계층(왼쪽)이 실제 GPU 하드웨어(오른쪽)에 어떻게 배정되어 실행되는지를 보여줍니다.", {
+    x: M, y: 1.5, w: W-2*M, h: 0.45, fontFace: KFONT, fontSize: 14.5, color: C.MUTED, margin: 0 });
+
+  // 열 헤더
+  const swx = M, sww = 4.7, hwx = 7.5, hww = W-M-7.5;
+  s.addText("소프트웨어 (논리)", { x: swx, y: 2.0, w: sww, h: 0.35, align: "center", fontFace: KFONT, fontSize: 13, bold: true, color: C.TEAL, margin: 0 });
+  s.addText("하드웨어 (물리)",   { x: hwx, y: 2.0, w: hww, h: 0.35, align: "center", fontFace: KFONT, fontSize: 13, bold: true, color: C.AMBER, margin: 0 });
+
+  const rows = [
+    ["그리드 (Grid)", "커널 실행 전체", "GPU (디바이스)", "여러 SM으로 구성"],
+    ["블록 (Block)", "blockIdx.x · 최대 1024 스레드", "SM (Streaming Multiprocessor)", "블록을 배정받아 실행"],
+    ["워프 (Warp) = 32 스레드", "블록을 32개씩 묶음", "워프 스케줄러 (SIMT)", "32 스레드가 같은 명령 동시 실행"],
+    ["스레드 (Thread)", "threadIdx.x", "CUDA 코어 (lane)", "한 스레드의 연산 담당"],
+  ];
+  const y0 = 2.45, rh = 0.9, gap = 0.16;
+  rows.forEach((r, i) => {
+    const y = y0 + i*(rh+gap);
+    nodeBox(s, swx, y, sww, rh, r[0], r[1], C.TEAL, "12212A");
+    nodeBox(s, hwx, y, hww, rh, r[2], r[3], C.AMBER, "241A16");
+    arrow(s, swx+sww+0.08, y+rh/2, (hwx-(swx+sww))-0.16, 0, C.FAINT, { width: 1.8 });
+  });
+
+  card(s, M, y0+4*(rh+gap)-0.02, W-2*M, 0.95, "12212A", C.TEAL);
+  s.addText([
+    ln("MemtestG80: 블록당 512 스레드 = 16 워프. ", C.TEAL, { bold: true, breakLine: false }),
+    ln("같은 워프의 32 스레드가 인접 주소를 읽어 메모리 병합(coalescing)이 일어납니다 (다음 슬라이드). SIMT = 한 명령을 32 스레드가 함께 실행.", C.TEXT, { breakLine: true }),
+  ], { x: M+0.3, y: y0+4*(rh+gap)+0.14, w: W-2*M-0.6, h: 0.7, fontFace: KFONT, fontSize: 13.5, color: C.TEXT, margin: 0, valign: "top", lineSpacingMultiple: 1.12 });
+  s.addNotes("실행 계층(앞 슬라이드)이 하드웨어에 매핑되는 관점. Grid→GPU, Block→SM, Warp(32)→스케줄러(SIMT), Thread→코어. 워프 개념이 다음 coalescing 슬라이드의 전제입니다.");
+})();
+
 // 5 — 내장 변수
 (() => {
   const s = p.addSlide(); bg(s);
