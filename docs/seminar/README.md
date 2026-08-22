@@ -30,8 +30,9 @@
 | [`소프트오류_실측데이터_GPGPU_한국어판.epub`](소프트오류_실측데이터_GPGPU_한국어판.epub) | 원논문 한국어 번역판 전자책 (전 5장, 그림·표·참고문헌 포함) | ✅ 완성 |
 | [`epub/`](epub/) | 위 EPUB의 빌드 소스 (재패키징용) | ✅ |
 | [`presentation/`](presentation/) | LACSS 2010 발표 슬라이드 한국어판 (PPTX 21매, Fermi·AMD 확장) + 원본 PDF | ✅ 완성 |
+| [`부록1_DriverAPI_빌드와_커널로딩.md`](부록1_DriverAPI_빌드와_커널로딩.md) | **부록 1** — `driver_api/` 분석: 빌드 과정(cubin) & 커널 로딩(cuModuleLoad→cuLaunchKernel), block diagram 8종 | ✅ 부록 |
 
-**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1 + 발표 PPTX 한국어판 1.
+**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1 + 발표 PPTX 한국어판 1 + 심화 부록 1.
 
 ## 세션 로드맵
 
