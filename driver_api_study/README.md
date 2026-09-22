@@ -92,6 +92,26 @@ flowchart TD
 - **cuModuleLoad**(cubin→모듈) → **cuModuleGetFunction**(이름→함수, `K()` 캐시) → **cuLaunchKernel** 이 로딩·실행의 3핵심입니다.
 - `deviceVerifyConstant` 는 공유 메모리 트리 리덕션으로 블록별 오류 수를 만들고, 호스트가 `cuMemcpyDtoH` 로 받아 합산합니다.
 
+## 빌드 파이프라인
+
+디바이스 커널과 호스트가 **빌드 시점엔 완전히 독립**입니다. cubin과 실행 파일은 서로 링크하지 않고, 오직 **실행 중** `cuModuleLoad` 로만 만납니다.
+
+```mermaid
+flowchart LR
+    K["memtestG80_kernels.cu<br/>(__global__ 커널 · extern &quot;C&quot;)"] -->|"nvcc -cubin -arch=SMARCH"| CUBIN["memtestG80.cubin<br/>(GPU 바이너리 · SASS)"]
+    C["memtestG80_cli.cpp<br/>(단일 호스트 파일)"] -->|"g++ (-lcuda)"| EXE["memtestG80<br/>(실행 파일)"]
+    EXE -. "실행 시 cuModuleLoad" .-> CUBIN
+
+    classDef dev fill:#241A16,stroke:#E8A33D,color:#E8A33D;
+    classDef host fill:#12212A,stroke:#3FB8C4,color:#3FB8C4;
+    class K,CUBIN dev;
+    class C,EXE host;
+```
+
+- **디바이스 경로**: `nvcc -cubin -arch=$(SMARCH)` → `memtestG80.cubin` (특정 GPU 세대 전용 SASS).
+- **호스트 경로**: `g++` 로 단일 파일 컴파일 + 드라이버 라이브러리 `-lcuda` 링크 (nvcc 불필요).
+- driver_api/ 판은 호스트 오브젝트가 여러 개(core/cli + ezOptionParser)였지만, 여기서는 **호스트 컴파일 단위가 `memtestG80_cli.cpp` 하나**입니다.
+
 ## 빌드 & 실행
 
 ```bash
