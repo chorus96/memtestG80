@@ -28,20 +28,6 @@ static const char* cuErr(CUresult r) {
     return s ? s : "unknown";
 }
 
-// cubin 파일 경로 탐색: 환경변수 → 실행 파일 옆 → 현재 디렉터리
-static std::string findCubin(const char* argv0) {
-    const char* env = getenv("MEMTESTG80_CUBIN");
-    if (env && *env) return std::string(env);
-    std::string a(argv0 ? argv0 : "");
-    size_t slash = a.find_last_of('/');
-    if (slash != std::string::npos) {
-        std::string cand = a.substr(0, slash) + "/memtestG80.cubin";
-        FILE* f = fopen(cand.c_str(), "rb");
-        if (f) { fclose(f); return cand; }
-    }
-    return std::string("memtestG80.cubin");
-}
-
 int main(int argc, const char** argv) {
     uint megsToTest = 128;
     uint maxIters   = 50;
@@ -120,9 +106,11 @@ int main(int argc, const char** argv) {
     if (res != CUDA_SUCCESS) { printf("Error: cuCtxCreate: %s\n", cuErr(res)); exit(2); }
 
     // ---- 커널 모듈(cubin) 로드 ----
-    std::string cubin = findCubin(argv[0]);
-    if (!memtestG80_initKernels(cubin.c_str())) {
-        printf("Error: failed to load kernel module '%s'.\n", cubin.c_str());
+    //   기본은 현재 디렉터리의 memtestG80.cubin. 환경변수로 경로를 덮어쓸 수 있음.
+    const char* cubin = getenv("MEMTESTG80_CUBIN");
+    if (!cubin || !*cubin) cubin = "memtestG80.cubin";
+    if (!memtestG80_initKernels(cubin)) {
+        printf("Error: failed to load kernel module '%s'.\n", cubin);
         printf("       cubin 은 GPU 아키텍처에 맞게 컴파일되어야 합니다 (Makefile 의 SMARCH 확인).\n");
         printf("       또는 MEMTESTG80_CUBIN 환경변수로 경로를 지정하세요.\n");
         cuCtxDestroy(cuCtx);
