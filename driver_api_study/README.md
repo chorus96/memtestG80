@@ -5,6 +5,11 @@
 
 > 원리·개념 설명은 세미나 부록을 참고하세요: [`docs/seminar/부록1_DriverAPI_빌드와_커널로딩.md`](../docs/seminar/부록1_DriverAPI_빌드와_커널로딩.md)
 
+> 📖 **세 소스 파일(`Makefile` · `memtestG80_kernels.cu` · `memtestG80_cli.cpp`)에는
+> 자체 완결형 세미나 주석**이 달려 있습니다. 각 파일 상단의 "세미나 노트"부터 읽으면
+> 이 README나 부록 없이 **소스만으로도** 빌드·커널 로딩·실행 흐름을 학습할 수 있습니다.
+> 권장 읽기 순서: `Makefile`(빌드) → `memtestG80_kernels.cu`(GPU 커널) → `memtestG80_cli.cpp`(호스트).
+
 ## `driver_api/` 대비 변경 (단계별)
 
 1. **ezOptionParser.hpp 제거** ✅
