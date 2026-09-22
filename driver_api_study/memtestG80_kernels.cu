@@ -2,7 +2,7 @@
  * memtestG80_kernels.cu  (교육용 간결 버전 driver_api_study/)
  * MemtestG80 디바이스(GPU) 커널 — Driver API 판. 호스트 코드는 없습니다.
  *
- * nvcc 로 *.cubin* 으로 컴파일한 뒤, 호스트 측(memtestG80_core.cpp)이 CUDA Driver
+ * nvcc 로 *.cubin* 으로 컴파일한 뒤, 호스트 측(memtestG80_cli.cpp)이 CUDA Driver
  * API 의 cuModuleLoad/cuModuleGetFunction/cuLaunchKernel 로 런타임에 로드·실행합니다.
  *
  * ★ 교육용 축소판: 대표 테스트(Moving Inversions, ones/zeros)에 필요한

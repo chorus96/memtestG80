@@ -31,15 +31,20 @@
    - `core.h`/`core.cpp`: `gpuWriteConstant`/`gpuVerifyConstant`/`gpuMovingInversionsOnesZeros` 및 `memtestState`의 대표 메서드만 남기고 나머지 `gpuXxx`(저수준 함수 + 메서드)와 `lcgPeriod`/`setLCGPeriod`/`getLCGPeriod`, 미사용 `SOFTWAIT_LIM` 를 제거.
    - 결과: 소스 총 **1049줄 → 485줄** (약 54% 감소), `ezOptionParser.hpp`(~69KB)까지 포함하면 더 큼.
 
+6. **배너·cubin 경로 탐색 단순화 → 단일 파일화** ✅
+   - `print_usage` 배너를 2줄로, cubin 경로 탐색을 기본값 + 환경변수 override 로 단순화.
+   - **`memtestG80_core.{h,cpp}` 를 제거**하고 그 내용(모듈 관리·`gpuWriteConstant`/`Verify`·타이머·SOFTWAIT·메모리 할당)을 `memtestG80_cli.cpp` 로 합쳤습니다.
+   - 이제 소스는 **호스트 1파일 + 커널 1파일 + Makefile** 뿐입니다.
+
 ## 구성
 
 | 파일 | 역할 |
 |---|---|
-| `memtestG80_kernels.cu` | 디바이스 커널 (`__global__`/`__device__`, `extern "C"`) → cubin |
-| `memtestG80_core.h` | 공개 API (`memtestState`, SOFTWAIT, 센티넬, 모듈 관리) |
-| `memtestG80_core.cpp` | 호스트 구현 (모듈 로딩, `cuLaunchKernel`, `cuMem*`) |
-| `memtestG80_cli.cpp` | `main()` — 디바이스/컨텍스트/cubin 로드 + 13종 테스트 (인자 파싱 자체 구현) |
-| `Makefile` | Linux x64 빌드 (cubin + 호스트 링크 `-lcuda`) |
+| `memtestG80_kernels.cu` | 디바이스 커널 2개 (`deviceWriteConstant`/`deviceVerifyConstant`, `extern "C"`) → cubin |
+| `memtestG80_cli.cpp` | **단일 호스트 파일** — 인자 파싱 + 디바이스/컨텍스트/cubin 로드 + 모듈 관리 + 커널 실행 + 대표 테스트 1종 |
+| `Makefile` | Linux x64 빌드 (cubin + 호스트 단일 파일 링크 `-lcuda`) |
+
+> 호스트 코드는 이제 **파일 하나**(`memtestG80_cli.cpp`)입니다. Driver API 핵심 흐름을 한 파일에서 위→아래로 읽을 수 있습니다.
 
 ## 빌드 & 실행
 

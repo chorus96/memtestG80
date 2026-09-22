@@ -1,24 +1,110 @@
 /*
  * memtestG80_cli.cpp  (CUDA Driver API 판 · 교육용 간결 버전 driver_api_study/)
- * MemtestG80 명령행 프런트엔드 — 디바이스 열거·컨텍스트 생성·cubin 로딩까지
- * 전부 CUDA Driver API(cu*)로 수행합니다.
  *
- *   driver_api/ 판과의 차이:
- *     - ezOptionParser.hpp 의존을 제거하고, 표준 C++ 만으로 인자를 직접 파싱합니다.
- *       (CUDA와 직접 관련 없는 서드파티 코드를 걷어내 교재를 최대한 간결하게)
- *   테스트 루프(13종)는 원본과 동일하게 memtestState 메서드를 호출합니다.
+ * ★ 단일 파일 호스트 프로그램: 원래 memtestG80_core.{h,cpp} 로 나뉘어 있던
+ *   모듈 로딩·커널 실행·메모리 할당을 이 파일 하나로 합쳤습니다.
+ *   디바이스 커널만 memtestG80_kernels.cu → memtestG80.cubin 으로 분리되어,
+ *   실행 중 CUDA Driver API 로 로드됩니다.
  *
+ * 흐름: cuInit → cuCtxCreate → cuModuleLoad(cubin)
+ *       → cuModuleGetFunction → cuLaunchKernel → 결과 cuMemcpyDtoH → 정리
+ *
+ * 빌드: g++ (호스트) + nvcc -cubin (커널). 링크는 드라이버 라이브러리 -lcuda.
+ * 대상: Linux x86-64 · 단일 GPU
  * 라이선스: LGPL v3 (원본과 동일)
  */
 #include <cstdlib>
 #include <cstdio>
 #include <string>
+#include <map>
 #include <cuda.h>
-#include "memtestG80_core.h"
+#include <sys/time.h>
+#include <unistd.h>
 
-static void print_usage(void) {
-    printf("MemtestG80 (CUDA Driver API, study edition)\n");
-    printf("Usage: memtestG80 [-g N] [MB] [iters]   (defaults: GPU 0, 128 MB, 50 iters)\n\n");
+typedef unsigned int uint;
+
+// ---- 밀리초 타이머 (Linux) ----
+static unsigned getTimeMilliseconds(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec*1000 + tv.tv_usec/1000;
+}
+
+// ---- 오류/타임아웃 센티넬 ----
+#define MEMTEST_LAUNCH_FAILED 0xFFFFFFFFu   // 커널 런치/드라이버 호출 실패
+#define MEMTEST_TIMEOUT       0xFFFFFFFEu   // 커널 타임아웃
+#define CU_CHECK_RET(call) do { if ((call) != CUDA_SUCCESS) return MEMTEST_LAUNCH_FAILED; } while (0)
+
+// ===================================================================
+// 커널 모듈 관리 (cuModuleLoad 로 올린 cubin 에서 이름으로 CUfunction 조회)
+// ===================================================================
+static CUmodule g_module = 0;
+static std::map<std::string, CUfunction> g_funcs;
+
+// cubin 에서 커널을 이름으로 찾아 캐시
+static CUfunction K(const char* name) {
+    std::string key(name);
+    std::map<std::string, CUfunction>::iterator it = g_funcs.find(key);
+    if (it != g_funcs.end()) return it->second;
+    CUfunction f = 0;
+    if (cuModuleGetFunction(&f, g_module, name) != CUDA_SUCCESS) return 0;
+    g_funcs[key] = f;
+    return f;
+}
+
+// 1D grid/block + 동적 공유 메모리(shmem 바이트) + 기본 스트림(0) 으로 커널 실행
+static CUresult launch(CUfunction f, uint grid, uint block, uint shmem, void** args) {
+    if (!f) return CUDA_ERROR_NOT_FOUND;
+    return cuLaunchKernel(f, grid,1,1,  block,1,1,  shmem, 0, args, 0);
+}
+
+// 커널 완료를 슬립 폴링으로 대기 (기본 스트림 0)
+static int pollStatus(unsigned limit=15000) {
+    unsigned t0 = getTimeMilliseconds();
+    while (cuStreamQuery(0) == CUDA_ERROR_NOT_READY) {
+        if ((getTimeMilliseconds() - t0) > limit) return -1;
+        usleep(1000);
+    }
+    return 0;
+}
+#define SOFTWAIT() if (pollStatus() != 0) { return MEMTEST_TIMEOUT; }
+
+// ===================================================================
+// 상수 쓰기/검증 (커널 2개를 호출)
+// ===================================================================
+static void gpuWriteConstant(uint nBlocks, uint nThreads, CUdeviceptr base, uint N, uint constant) {
+    void* args[] = { (void*)&base, (void*)&N, (void*)&constant };
+    launch(K("deviceWriteConstant"), nBlocks, nThreads, 0, args);
+}
+
+static uint gpuVerifyConstant(uint nBlocks, uint nThreads, CUdeviceptr base, uint N, uint constant,
+                              CUdeviceptr blockErrorCount, uint* errorCounts) {
+    void* args[] = { (void*)&base, (void*)&N, (void*)&constant, (void*)&blockErrorCount };
+    CU_CHECK_RET(launch(K("deviceVerifyConstant"), nBlocks, nThreads, sizeof(uint)*nThreads, args));
+    SOFTWAIT();
+    CU_CHECK_RET(cuMemcpyDtoH(errorCounts, blockErrorCount, sizeof(uint)*nBlocks));
+
+    uint totalErrors = 0;
+    for (uint i = 0; i < nBlocks; i++) totalErrors += errorCounts[i];
+    return totalErrors;
+}
+
+// 대표 테스트: Moving Inversions (ones/zeros) — 0xFFFFFFFF 와 0x0 을 쓰고 검증
+static uint gpuMovingInversionsOnesZeros(uint nBlocks, uint nThreads, CUdeviceptr base, uint N,
+                                         CUdeviceptr blockErrorCount, uint* errorCounts) {
+    uint e, total = 0;
+    gpuWriteConstant(nBlocks, nThreads, base, N, 0xFFFFFFFF);
+    SOFTWAIT();
+    e = gpuVerifyConstant(nBlocks, nThreads, base, N, 0xFFFFFFFF, blockErrorCount, errorCounts);
+    if (e == MEMTEST_LAUNCH_FAILED || e == MEMTEST_TIMEOUT) return e;
+    total += e;
+
+    gpuWriteConstant(nBlocks, nThreads, base, N, 0x0);
+    SOFTWAIT();
+    e = gpuVerifyConstant(nBlocks, nThreads, base, N, 0x0, blockErrorCount, errorCounts);
+    if (e == MEMTEST_LAUNCH_FAILED || e == MEMTEST_TIMEOUT) return e;
+    total += e;
+    return total;
 }
 
 // 드라이버 API 오류를 문자열로
@@ -28,14 +114,20 @@ static const char* cuErr(CUresult r) {
     return s ? s : "unknown";
 }
 
+static void print_usage(void) {
+    printf("MemtestG80 (CUDA Driver API, study edition)\n");
+    printf("Usage: memtestG80 [-g N] [MB] [iters]   (defaults: GPU 0, 128 MB, 50 iters)\n\n");
+}
+
 int main(int argc, const char** argv) {
+    const uint nBlocks = 1024, nThreads = 512;
     uint megsToTest = 128;
     uint maxIters   = 50;
     int  gpuID      = 0;
 
     print_usage();
 
-    // ---- 인자 파싱 (ezOptionParser 없이, 표준 C++ 만으로) ----
+    // ---- 인자 파싱 (표준 C++ 만으로) ----
     //   플래그: -g/--gpu N
     //   위치 인자: [MB] [iters]  (플래그가 아닌 순서대로 최대 2개)
     const char* positional[2] = { 0, 0 };
@@ -43,50 +135,32 @@ int main(int argc, const char** argv) {
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "-g" || arg == "--gpu") {
-            if (i + 1 < argc) {
-                gpuID = atoi(argv[++i]);
-            } else {
-                printf("Error: %s requires a GPU index argument\n", arg.c_str());
-                exit(2);
-            }
+            if (i + 1 < argc) gpuID = atoi(argv[++i]);
+            else { printf("Error: %s requires a GPU index argument\n", arg.c_str()); exit(2); }
         } else if (!arg.empty() && arg[0] == '-') {
-            printf("Error: unknown flag '%s'\n", arg.c_str());
-            exit(2);
+            printf("Error: unknown flag '%s'\n", arg.c_str()); exit(2);
         } else if (nPositional < 2) {
             positional[nPositional++] = argv[i];
         } else {
-            printf("Error: too many arguments; expected [MB GPU RAM to test] [# iters]\n");
-            exit(2);
+            printf("Error: too many arguments; expected [MB] [iters]\n"); exit(2);
         }
     }
     if (nPositional == 2) {
         sscanf(positional[0], "%u", &megsToTest);
         sscanf(positional[1], "%u", &maxIters);
     } else if (nPositional == 1) {
-        printf("Error: Bad argument for [MB GPU RAM to test] [# iters]\n");
+        printf("Error: Bad argument for [MB] [iters]\n");
     }
 
     // ---- Driver API 초기화 ----
     CUresult res = cuInit(0);
-    if (res != CUDA_SUCCESS) {
-        printf("Error: cuInit failed: %s\n", cuErr(res));
-        exit(2);
-    }
+    if (res != CUDA_SUCCESS) { printf("Error: cuInit failed: %s\n", cuErr(res)); exit(2); }
 
     int devCount = 0;
     cuDeviceGetCount(&devCount);
-    if (devCount == 0) {
-        printf("Error: No CUDA-capable device detected.\n");
-        exit(2);
-    }
+    if (devCount == 0) { printf("Error: No CUDA-capable device detected.\n"); exit(2); }
     if (gpuID >= devCount) {
-        printf("Error: Specified invalid GPU index (%d); %d CUDA devices present, numbered from zero.\n", gpuID, devCount);
-        printf("\nValid CUDA devices:\n");
-        for (int i = 0; i < devCount; i++) {
-            CUdevice d; char nm[256];
-            if (cuDeviceGet(&d, i) == CUDA_SUCCESS && cuDeviceGetName(nm, sizeof(nm), d) == CUDA_SUCCESS)
-                printf("%d: %s\n", i, nm);
-        }
+        printf("Error: invalid GPU index (%d); %d devices present.\n", gpuID, devCount);
         exit(2);
     }
 
@@ -109,51 +183,52 @@ int main(int argc, const char** argv) {
     //   기본은 현재 디렉터리의 memtestG80.cubin. 환경변수로 경로를 덮어쓸 수 있음.
     const char* cubin = getenv("MEMTESTG80_CUBIN");
     if (!cubin || !*cubin) cubin = "memtestG80.cubin";
-    if (!memtestG80_initKernels(cubin)) {
+    if (cuModuleLoad(&g_module, cubin) != CUDA_SUCCESS) {
         printf("Error: failed to load kernel module '%s'.\n", cubin);
         printf("       cubin 은 GPU 아키텍처에 맞게 컴파일되어야 합니다 (Makefile 의 SMARCH 확인).\n");
-        printf("       또는 MEMTESTG80_CUBIN 환경변수로 경로를 지정하세요.\n");
         cuCtxDestroy(cuCtx);
         exit(2);
     }
 
-    // ---- 크기·반복 수 검증 ----
-    if (megsToTest == 0) { printf("Error: invalid memory test region size %u MiB\n", megsToTest); exit(2); }
-    if (maxIters == 0)   { printf("Error: invalid iteration count %u\n", maxIters); exit(2); }
+    // ---- 테스트 메모리 할당 ----
+    if (megsToTest % 2) megsToTest++;         // 2MiB 단위로 반올림
+    if (megsToTest == 0 || maxIters == 0) { printf("Error: invalid size/iters\n"); exit(2); }
+    uint loopIters = megsToTest / 2;          // N = MB/2 (스레드당 word 수)
 
-    memtestState tester;
-    if (!tester.allocate(megsToTest)) {
-        printf("Error: unable to allocate %u MiB of GPU memory to test, bailing!\n", megsToTest);
-        memtestG80_unloadKernels();
-        cuCtxDestroy(cuCtx);
-        exit(2);
+    CUdeviceptr devTestMem = 0, devTempMem = 0;
+    if (cuMemAlloc(&devTestMem, ((size_t) megsToTest) * 1048576) != CUDA_SUCCESS) {
+        printf("Error: unable to allocate %u MiB of GPU memory, bailing!\n", megsToTest);
+        cuModuleUnload(g_module); cuCtxDestroy(cuCtx); exit(2);
     }
-    printf("Running %u iterations of tests over %u MB of GPU memory on card %d: %s (sm_%d%d)\n\n",
-           maxIters, tester.size(), gpuID, devName, ccMajor, ccMinor);
+    cuMemAlloc(&devTempMem, sizeof(uint) * nBlocks);   // 블록별 오류 수
+    uint* hostTempMem = (uint*) malloc(sizeof(uint) * nBlocks);
 
+    printf("Running %u iterations over %u MB on GPU %d: %s (sm_%d%d)\n\n",
+           maxIters, megsToTest, gpuID, devName, ccMajor, ccMinor);
+
+    // ---- 대표 테스트 반복 ----
     uint accumulatedErrors = 0;
-    unsigned int start, end;
-
     for (uint i = 0; i < maxIters; i++) {
-        printf("Test iteration %u (GPU %d, %d MiB): %u errors so far\n", i+1, gpuID, tester.size(), accumulatedErrors);
-        uint errorCount = 0;
-
-        // 대표 테스트: Moving Inversions (1의 값과 0의 값)
-        //   0xFFFFFFFF / 0x0 을 deviceWriteConstant 로 쓰고,
-        //   deviceVerifyConstant(공유 메모리 트리 리덕션)로 되읽어 검증한다.
-        //   → 쓰기 커널 + 검증 커널을 모두 사용해 커널 로딩·실행 흐름을 온전히 보여줌.
-        start = getTimeMilliseconds();
-        tester.gpuMovingInversionsOnesZeros(errorCount);
-        end = getTimeMilliseconds();
+        unsigned start = getTimeMilliseconds();
+        uint errorCount = gpuMovingInversionsOnesZeros(nBlocks, nThreads, devTestMem, loopIters,
+                                                       devTempMem, hostTempMem);
+        unsigned end = getTimeMilliseconds();
+        if (errorCount == MEMTEST_LAUNCH_FAILED || errorCount == MEMTEST_TIMEOUT) {
+            printf("Iteration %u: test failed (launch/timeout)\n", i+1);
+            continue;
+        }
         accumulatedErrors += errorCount;
-        printf("\tMoving Inversions (ones and zeros): %u errors (%u ms)\n\n", errorCount, end-start);
+        printf("Iteration %u: Moving Inversions (ones/zeros): %u errors (%u ms)\n",
+               i+1, errorCount, end-start);
     }
-    printf("Final error count after %u iterations over %u MiB of GPU memory: %u errors\n",
-           maxIters, tester.size(), accumulatedErrors);
+    printf("\nFinal error count after %u iterations over %u MiB: %u errors\n",
+           maxIters, megsToTest, accumulatedErrors);
 
     // ---- 정리 ----
-    tester.deallocate();
-    memtestG80_unloadKernels();
+    cuMemFree(devTestMem);
+    cuMemFree(devTempMem);
+    free(hostTempMem);
+    cuModuleUnload(g_module);
     cuCtxDestroy(cuCtx);
     return (accumulatedErrors != 0);
 }

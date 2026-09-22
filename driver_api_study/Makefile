@@ -1,7 +1,8 @@
 # Makefile — MemtestG80 (CUDA Driver API 판 · 교육용 간결 버전) · Linux x86-64 전용
 #
 # driver_api/ 판과의 차이:
-#   - ezOptionParser.hpp 의존 제거 → 호스트 오브젝트는 core/cli 두 개뿐, 헤더 의존 단순화
+#   - ezOptionParser.hpp 제거, memtestG80_core.{h,cpp} 를 cli.cpp 로 합침
+#     → 호스트는 단일 파일(memtestG80_cli.cpp) + 커널(memtestG80_kernels.cu) 뿐
 #
 # 구조:
 #   1) 디바이스 커널(memtestG80_kernels.cu) → nvcc 로 **cubin** 컴파일
@@ -30,7 +31,6 @@ CXXFLAGS  ?= -O2 -Wall -m64 -I$(CUDA_INC)
 LDFLAGS   ?= -L$(CUDA_LIB) -L$(CUDA_STUB) -lcuda
 
 CUBIN     = memtestG80.cubin
-OBJS      = memtestG80_core.o memtestG80_cli.o
 TARGET    = memtestG80
 
 all: $(CUBIN) $(TARGET)
@@ -39,16 +39,9 @@ all: $(CUBIN) $(TARGET)
 $(CUBIN): memtestG80_kernels.cu
 	$(NVCC) -cubin -arch=$(SMARCH) -Xptxas -v -o $(CUBIN) memtestG80_kernels.cu
 
-# 2) 호스트 오브젝트 (g++, 드라이버 API 헤더만 필요)
-memtestG80_core.o: memtestG80_core.cpp memtestG80_core.h
-	$(CXX) -c $(CXXFLAGS) -o memtestG80_core.o memtestG80_core.cpp
-
-memtestG80_cli.o: memtestG80_cli.cpp memtestG80_core.h
-	$(CXX) -c $(CXXFLAGS) -o memtestG80_cli.o memtestG80_cli.cpp
-
-# 3) 링크 (드라이버 라이브러리)
-$(TARGET): $(OBJS)
-	$(CXX) -m64 -o $(TARGET) $(OBJS) $(LDFLAGS)
+# 2) 호스트 (단일 파일) → 컴파일 + 드라이버 라이브러리 링크
+$(TARGET): memtestG80_cli.cpp
+	$(CXX) $(CXXFLAGS) -o $(TARGET) memtestG80_cli.cpp $(LDFLAGS)
 
 clean:
 	rm -f *.o $(TARGET) $(CUBIN)
