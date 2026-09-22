@@ -12,7 +12,6 @@
  */
 #include <cstdlib>
 #include <cstdio>
-#include <cstring>
 #include <string>
 #include <cuda.h>
 #include "memtestG80_core.h"
@@ -153,95 +152,22 @@ int main(int argc, const char** argv) {
     printf("Running %u iterations of tests over %u MB of GPU memory on card %d: %s (sm_%d%d)\n\n",
            maxIters, tester.size(), gpuID, devName, ccMajor, ccMinor);
 
-    uint accumulatedErrors = 0, iterErrors;
-    uint errorCounts[15];
-    memset(errorCounts, 0, 15*sizeof(uint));
+    uint accumulatedErrors = 0;
     unsigned int start, end;
 
     for (uint i = 0; i < maxIters; i++) {
         printf("Test iteration %u (GPU %d, %d MiB): %u errors so far\n", i+1, gpuID, tester.size(), accumulatedErrors);
-        uint errorCount;
+        uint errorCount = 0;
 
-        // Moving inversions, 1's and 0's
-        errorCount = 0; start = getTimeMilliseconds();
+        // 대표 테스트: Moving Inversions (1의 값과 0의 값)
+        //   0xFFFFFFFF / 0x0 을 deviceWriteConstant 로 쓰고,
+        //   deviceVerifyConstant(공유 메모리 트리 리덕션)로 되읽어 검증한다.
+        //   → 쓰기 커널 + 검증 커널을 모두 사용해 커널 로딩·실행 흐름을 온전히 보여줌.
+        start = getTimeMilliseconds();
         tester.gpuMovingInversionsOnesZeros(errorCount);
-        accumulatedErrors += errorCount; end = getTimeMilliseconds();
-        errorCounts[0] += errorCount;
-        printf("\tMoving Inversions (ones and zeros): %u errors (%u ms)\n", errorCount, end-start);
-
-        // Memtest86 walking 8-bit
-        errorCount = 0; start = getTimeMilliseconds();
-        for (uint shift = 0; shift < 8; shift++) { tester.gpuWalking8BitM86(iterErrors, shift); errorCount += iterErrors; }
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[1] += errorCount;
-        printf("\tMemtest86 Walking 8-bit: %u errors (%u ms)\n", errorCount, end-start);
-
-        // True Walking zeros, 8-bit
-        errorCount = 0; start = getTimeMilliseconds();
-        for (uint shift = 0; shift < 8; shift++) { tester.gpuWalking8Bit(iterErrors, false, shift); errorCount += iterErrors; }
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[2] += errorCount;
-        printf("\tTrue Walking zeros (8-bit): %u errors (%u ms)\n", errorCount, end-start);
-
-        // True Walking ones, 8-bit
-        errorCount = 0; start = getTimeMilliseconds();
-        for (uint shift = 0; shift < 8; shift++) { tester.gpuWalking8Bit(iterErrors, true, shift); errorCount += iterErrors; }
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[3] += errorCount;
-        printf("\tTrue Walking ones (8-bit): %u errors (%u ms)\n", errorCount, end-start);
-
-        // Moving inversions, random
-        start = getTimeMilliseconds();
-        tester.gpuMovingInversionsRandom(errorCount);
-        accumulatedErrors += errorCount; end = getTimeMilliseconds(); errorCounts[4] += errorCount;
-        printf("\tMoving Inversions (random): %u errors (%u ms)\n", errorCount, end-start);
-
-        // Walking zeros, 32-bit
-        errorCount = 0; start = getTimeMilliseconds();
-        for (uint shift = 0; shift < 32; shift++) { tester.gpuWalking32Bit(iterErrors, false, shift); errorCount += iterErrors; }
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[5] += errorCount;
-        printf("\tMemtest86 Walking zeros (32-bit): %u errors (%u ms)\n", errorCount, end-start);
-
-        // Walking ones, 32-bit
-        errorCount = 0; start = getTimeMilliseconds();
-        for (uint shift = 0; shift < 32; shift++) { tester.gpuWalking32Bit(iterErrors, true, shift); errorCount += iterErrors; }
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[6] += errorCount;
-        printf("\tMemtest86 Walking ones (32-bit): %u errors (%u ms)\n", errorCount, end-start);
-
-        // Random blocks
-        start = getTimeMilliseconds();
-        tester.gpuRandomBlocks(errorCount, rand());
-        accumulatedErrors += errorCount; errorCounts[7] += errorCount; end = getTimeMilliseconds();
-        printf("\tRandom blocks: %u errors (%u ms)\n", errorCount, end-start);
-
-        // Modulo-20, 32-bit
-        errorCount = 0; start = getTimeMilliseconds();
-        for (uint shift = 0; shift < 20; shift++) { tester.gpuModuloX(iterErrors, shift, rand(), 20, 2); errorCount += iterErrors; }
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[8] += errorCount;
-        printf("\tMemtest86 Modulo-20: %u errors (%u ms)\n", errorCount, end-start);
-
-        // Logic, 1 iteration
-        errorCount = 0; start = getTimeMilliseconds();
-        tester.gpuShortLCG0(errorCount, 1);
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[9] += errorCount;
-        printf("\tLogic (one iteration): %u errors (%u ms)\n", errorCount, end-start);
-
-        // Logic, 4 iterations
-        errorCount = 0; start = getTimeMilliseconds();
-        tester.gpuShortLCG0(errorCount, 4);
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[10] += errorCount;
-        printf("\tLogic (4 iterations): %u errors (%u ms)\n", errorCount, end-start);
-
-        // Logic, shared-memory, 1 iteration
-        errorCount = 0; start = getTimeMilliseconds();
-        tester.gpuShortLCG0Shmem(errorCount, 1);
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[11] += errorCount;
-        printf("\tLogic (shared memory, one iteration): %u errors (%u ms)\n", errorCount, end-start);
-
-        // Logic, shared-memory, 4 iterations
-        errorCount = 0; start = getTimeMilliseconds();
-        tester.gpuShortLCG0Shmem(errorCount, 4);
-        end = getTimeMilliseconds(); accumulatedErrors += errorCount; errorCounts[12] += errorCount;
-        printf("\tLogic (shared-memory, 4 iterations): %u errors (%u ms)\n", errorCount, end-start);
-
-        printf("\n");
+        end = getTimeMilliseconds();
+        accumulatedErrors += errorCount;
+        printf("\tMoving Inversions (ones and zeros): %u errors (%u ms)\n\n", errorCount, end-start);
     }
     printf("Final error count after %u iterations over %u MiB of GPU memory: %u errors\n",
            maxIters, tester.size(), accumulatedErrors);

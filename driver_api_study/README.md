@@ -19,7 +19,12 @@
 3. **대역폭 측정 제거** ✅
    - 시작 시의 device-to-device 복사 기반 대역폭 측정 블록을 삭제했습니다.
    - 이제 쓰이지 않는 `gpuMemoryBandwidth`(free 함수 + `memtestState` 메서드)도 `core`에서 함께 제거했습니다.
-   - 커널 로딩·실행 흐름 학습에는 13종 메모리 테스트만으로 충분합니다.
+
+4. **13종 테스트 → 대표 1종만** ✅
+   - CLI 테스트 루프를 **Moving Inversions (ones and zeros)** 한 종류만 남겼습니다.
+   - 이 테스트는 **쓰기 커널(`deviceWriteConstant`)** 과 **공유 메모리 트리 리덕션이 있는 검증 커널(`deviceVerifyConstant`)** 을 모두 사용해, 커널 로딩·실행 흐름을 온전히 보여줍니다.
+   - 여러 테스트의 합산용 배열(`errorCounts[]`)·미사용 변수·`<cstring>` include도 함께 정리했습니다.
+   - ⚠️ 아직 `core`/`kernels.cu` 에는 지금 쓰이지 않는 다른 테스트용 함수·커널이 남아 있습니다(다음 단계에서 정리 예정).
 
 ## 구성
 
