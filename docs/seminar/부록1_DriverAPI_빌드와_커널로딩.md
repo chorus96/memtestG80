@@ -65,8 +65,22 @@ flowchart LR
 | `memtestG80_core.h` | 공개 API — `memtestState`, SOFTWAIT, 센티넬, 모듈 관리 선언 | (헤더) |
 | `memtestG80_core.cpp` | 호스트 구현 — 모듈 로딩, `cuLaunchKernel`, 메모리(`cuMem*`) | `g++` |
 | `memtestG80_cli.cpp` | `main()` — 디바이스 열거·컨텍스트·cubin 로드 + 13종 테스트 루프 | `g++` |
-| `ezOptionParser.hpp` | 명령행 인자 파서 (자체 포함용 복사본) | (헤더) |
+| [`ezOptionParser.hpp`](#term-ezoptionparser) | 명령행 인자 파서 (자체 포함용 복사본) | (헤더) |
 | `Makefile` | Linux x64 빌드 (cubin + 호스트 링크 `-lcuda`) | — |
+
+<a id="term-ezoptionparser"></a>
+
+> **📖 용어 — ezOptionParser.hpp**
+>
+> **발음**: "이지-옵션-파서" (ez = easy)
+>
+> **ezOptionParser**는 프로그램의 **명령행 인자(command-line argument)를 파싱하는 헤더 전용(header-only) 서드파티 라이브러리**입니다(작성: Remik Ziemlinski). memtestG80 자체 코드가 아니라 **가져다 쓴 것**이며, GPU 테스트 로직과는 무관한 "옵션 처리기" 역할만 합니다.
+>
+> - **헤더 전용**: `.cpp` 없이 `.hpp` 하나에 구현이 다 들어 있어 `#include` 만 하면 됩니다(별도 컴파일·링크 불필요). 그래서 `driver_api/`에 자체 포함용 복사본을 둡니다. `ez::` 네임스페이스의 `ezOptionParser` 클래스로 제공.
+> - **`memtestG80_cli.cpp`에서의 쓰임**: 옵션 정의(`opt.add(...)`) → 파싱(`opt.parse(argc,argv)`) → 조회(`opt.isSet("-g")`, `opt.get("-g")->getInt(gpuID)`) → 위치 인자 수집(`opt.lastArgs` = `[MB] [iters]`).
+> - **처리 대상**: `--gpu`/`-g`(GPU 번호), `--license`/`-l`(플래그), 그리고 위치 인자 `[테스트 MB] [반복 횟수]`. 사용법(usage)·도움말 자동 생성도 지원.
+> - **왜 필요한가**: C의 `argv[]`(문자열 배열)를 손으로 파싱하면 번거롭고 버그가 많습니다 — 파싱·검증·타입 변환·도움말 같은 잡일을 대신해 줘 `main()`이 테스트 실행에 집중하게 합니다.
+> - **더 보기**: 저장소에 상세 분석 문서 `ezOptionParser.hpp.kr.md`(한국어 + 블록 다이어그램)가 있습니다.
 
 ---
 
