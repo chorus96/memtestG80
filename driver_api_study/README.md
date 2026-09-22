@@ -24,7 +24,12 @@
    - CLI 테스트 루프를 **Moving Inversions (ones and zeros)** 한 종류만 남겼습니다.
    - 이 테스트는 **쓰기 커널(`deviceWriteConstant`)** 과 **공유 메모리 트리 리덕션이 있는 검증 커널(`deviceVerifyConstant`)** 을 모두 사용해, 커널 로딩·실행 흐름을 온전히 보여줍니다.
    - 여러 테스트의 합산용 배열(`errorCounts[]`)·미사용 변수·`<cstring>` include도 함께 정리했습니다.
-   - ⚠️ 아직 `core`/`kernels.cu` 에는 지금 쓰이지 않는 다른 테스트용 함수·커널이 남아 있습니다(다음 단계에서 정리 예정).
+   - (당시엔 `core`/`kernels.cu` 에 미사용 함수·커널이 남아 있었고, 아래 5단계에서 정리했습니다.)
+
+5. **미사용 커널·함수 정리** ✅
+   - `kernels.cu`: 대표 테스트가 쓰는 **`deviceWriteConstant` · `deviceVerifyConstant` 2개만** 남기고, 나머지 커널(LCG·페어상수·워킹32·랜덤블록·모듈로)과 PRNG `__device__` 헬퍼(`deviceRan0p` 등)·`LCGLOOP`/`THREAD_OFFSET` 매크로를 제거.
+   - `core.h`/`core.cpp`: `gpuWriteConstant`/`gpuVerifyConstant`/`gpuMovingInversionsOnesZeros` 및 `memtestState`의 대표 메서드만 남기고 나머지 `gpuXxx`(저수준 함수 + 메서드)와 `lcgPeriod`/`setLCGPeriod`/`getLCGPeriod`, 미사용 `SOFTWAIT_LIM` 를 제거.
+   - 결과: 소스 총 **1049줄 → 485줄** (약 54% 감소), `ezOptionParser.hpp`(~69KB)까지 포함하면 더 큼.
 
 ## 구성
 

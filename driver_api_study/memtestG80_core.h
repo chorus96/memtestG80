@@ -45,7 +45,6 @@ inline int _pollStatus(unsigned length=1, unsigned limit=15000) {
     return 0;
 }
 #define SOFTWAIT()        if (_pollStatus()     != 0) { return MEMTEST_TIMEOUT; }
-#define SOFTWAIT_LIM(lim) if (_pollStatus(1,lim) != 0) { return MEMTEST_TIMEOUT; }
 
 // ===================================================================
 // 커널 모듈 관리 (구현부: memtestG80_core.cpp)
@@ -64,7 +63,6 @@ protected:
     const uint nThreads;
     uint loopIters;
     uint megsToTest;
-    int  lcgPeriod;
     CUdeviceptr devTestMem;   // 시험 대상 전역 메모리 (원본은 uint*)
     CUdeviceptr devTempMem;   // 블록별 오류 수 (nBlocks개)
     uint* hostTempMem;        // 위를 CPU로 복사해 최종 합산할 버퍼
@@ -72,7 +70,7 @@ protected:
 public:
     uint initTime;
     memtestState() : nBlocks(1024), nThreads(512), loopIters(0), megsToTest(0),
-                     lcgPeriod(1024), devTestMem(0), devTempMem(0), hostTempMem(NULL),
+                     devTestMem(0), devTempMem(0), hostTempMem(NULL),
                      allocated(false), initTime(0) {};
     ~memtestState() { deallocate(); }
 
@@ -80,37 +78,18 @@ public:
     void deallocate();
     bool isAllocated() const { return allocated; }
     uint size() const { return megsToTest; }
-    void setLCGPeriod(int period) { lcgPeriod = period; }
-    int  getLCGPeriod() const { return lcgPeriod; }
 
-    bool gpuWriteConstant(const uint constant) const;
-    bool gpuVerifyConstant(uint& errorCount, const uint constant) const;
-    bool gpuShortLCG0(uint& errorCount, const uint repeats) const;
-    bool gpuShortLCG0Shmem(uint& errorCount, const uint repeats) const;
+    // 교육용 축소판: 대표 테스트 하나만 제공.
+    //   0xFFFFFFFF/0x0 을 쓰고 되읽어 검증 (deviceWriteConstant + deviceVerifyConstant)
     bool gpuMovingInversionsOnesZeros(uint& errorCount) const;
-    bool gpuWalking8BitM86(uint& errorCount, const uint shift) const;
-    bool gpuWalking8Bit(uint& errorCount, const bool ones, const uint shift) const;
-    bool gpuMovingInversionsRandom(uint& errorCount) const;
-    bool gpuWalking32Bit(uint& errorCount, const bool ones, const uint shift) const;
-    bool gpuRandomBlocks(uint& errorCount, const uint seed) const;
-    bool gpuModuloX(uint& errorCount, const uint shift, const uint pattern, const uint modulus, const uint overwriteIters) const;
 };
 
 // ===================================================================
 // 저수준 __host__ 함수 (Driver API 판). base/blockErrorCount 는 CUdeviceptr,
 // errorCounts 는 호스트 버퍼(uint*). 반환값은 오류 수 또는 센티넬.
 // ===================================================================
-void   gpuWriteConstant(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint constant);
-uint   gpuVerifyConstant(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint constant, CUdeviceptr blockErrorCount, uint* errorCounts);
-
-uint gpuShortLCG0(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint repeats, const int period, CUdeviceptr blockErrorCounts, uint* errorCounts);
-uint gpuShortLCG0Shmem(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint repeats, const int period, CUdeviceptr blockErrorCounts, uint* errorCounts);
+void gpuWriteConstant(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint constant);
+uint gpuVerifyConstant(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint constant, CUdeviceptr blockErrorCount, uint* errorCounts);
 uint gpuMovingInversionsOnesZeros(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, CUdeviceptr blockErrorCounts, uint* errorCounts);
-uint gpuWalking8BitM86(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, uint shift, CUdeviceptr blockErrorCounts, uint* errorCounts);
-uint gpuWalking8Bit(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, bool ones, uint shift, CUdeviceptr blockErrorCount, uint* errorCounts);
-uint gpuMovingInversionsRandom(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, CUdeviceptr blockErrorCounts, uint* errorCounts);
-uint gpuWalking32Bit(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, bool ones, uint shift, CUdeviceptr blockErrorCount, uint* errorCounts);
-uint gpuRandomBlocks(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, uint seed, CUdeviceptr blockErrorCount, uint* errorCounts);
-uint gpuModuloX(const uint nBlocks, const uint nThreads, CUdeviceptr base, const uint N, uint shift, uint pattern1, const uint modulus, const uint iters, CUdeviceptr blockErrorCount, uint* errorCounts);
 
 #endif
