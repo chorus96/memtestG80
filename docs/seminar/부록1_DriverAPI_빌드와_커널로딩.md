@@ -120,7 +120,7 @@ flowchart LR
 ```
 
 - **`-arch=$(SMARCH)`**: 어느 GPU 세대의 SASS를 낼지 지정. `sm_52`(Maxwell), `sm_75`(Turing/T4), `sm_86`(Ampere), `sm_89`(Ada) 등.
-- **`-Xptxas -v`**: PTX 어셈블러에 verbose 옵션을 넘겨 **레지스터/공유 메모리 사용량**을 출력 → 커널 점유율(occupancy) 감 잡기용.
+- **`-Xptxas -v`**: PTX 어셈블러([ptxas](#term-ptxas))에 verbose 옵션을 넘겨 **레지스터/공유 메모리 사용량**을 출력 → 커널 점유율(occupancy) 감 잡기용.
 - **산출물 `memtestG80.cubin`**: 여러 커널을 담은 **ELF 형식 컨테이너**. `cuobjdump -sass memtestG80.cubin` 으로 디스어셈블해 볼 수 있습니다.
 
 <a id="term-ptx"></a>
@@ -143,10 +143,24 @@ flowchart LR
 >
 > **SASS**는 특정 GPU 아키텍처(`sm_XX`)에서 하드웨어가 직접 실행하는 **실제 기계어(native ISA)** 입니다. 실제 레지스터 할당·명령 스케줄링이 반영된, PTX보다 더 저수준의 코드입니다. `cubin` 안에 담기는 것이 바로 이 SASS입니다.
 >
-> - **PTX와의 관계**: PTX가 "가상 중간표현"이라면 SASS는 "특정 세대 전용 진짜 기계어" — `ptxas -arch=sm_XX` 가 PTX를 SASS로 번역합니다.
+> - **PTX와의 관계**: PTX가 "가상 중간표현"이라면 SASS는 "특정 세대 전용 진짜 기계어" — [`ptxas`](#term-ptxas)`-arch=sm_XX` 가 PTX를 SASS로 번역합니다.
 > - **아키텍처 전용**: SASS는 그 `sm_XX` 세대에서만 유효 → **cubin이 특정 아키텍처 전용인 근본 이유**(그래서 `SMARCH`를 GPU에 맞춰야 함).
 > - **도구**: `cuobjdump -sass <cubin>` 으로 디스어셈블해 볼 수 있습니다.
 > - **풀네임 주의**: 관례적으로 **"Streaming Assembler"**(SM=Streaming Multiprocessor 계열)로 풀지만, NVIDIA가 공식 문서에서 명확히 정의하진 않아 "Shader Assembly"로 푸는 경우도 있습니다 — 실무에선 보통 그냥 **SASS**로 씁니다.
+
+<a id="term-ptxas"></a>
+
+> **📖 용어 — ptxas (PTX ASsembler)**
+>
+> **발음**: "피-티-엑스-애스" (`ptx` + `as`; `as`는 "에이에스"로도 읽음)
+>
+> **ptxas**는 [PTX](#term-ptx)(가상 ISA)를 특정 GPU 세대의 [SASS](#term-sass)(실제 기계어)로 번역하는 **백엔드 어셈블러 겸 최적화 컴파일러**입니다. 이름의 `as`는 유닉스 어셈블러 관례(GNU `as` 등)에서 왔지만, 실제로는 **레지스터 할당·명령 스케줄링·최적화**까지 수행해 단순 어셈블러보다는 백엔드 컴파일러에 가깝습니다.
+>
+> - **파이프라인 위치**: `CUDA C++ → (cicc 프런트엔드) → PTX → (ptxas) → SASS → cubin`. `nvcc -cubin -arch=sm_75` 는 내부적으로 cicc → **ptxas** 를 호출합니다.
+> - **입력/출력**: PTX → SASS. `-arch=sm_XX` 로 어느 세대 SASS를 낼지 지정.
+> - **`-Xptxas`**: nvcc가 옵션을 **ptxas로 전달**하라는 뜻. 예) `-Xptxas -v` = ptxas에 verbose → 레지스터·공유 메모리 사용량 출력.
+> - **JIT와의 관계**: PTX를 실행 시 드라이버가 SASS로 컴파일할 때도 사실상 ptxas 상당 기능이 동작합니다.
+> - **혼동 주의**: `nvcc`(전체 드라이버) · `cicc`(C++→PTX) · **`ptxas`(PTX→SASS)** · `fatbinary`(fatbin 묶기) · `cuobjdump`(들여다보기)는 서로 다른 단계의 도구입니다.
 
 ### ⚠️ cubin은 "그 아키텍처 전용"
 
