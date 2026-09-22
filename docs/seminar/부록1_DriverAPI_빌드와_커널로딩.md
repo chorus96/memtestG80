@@ -18,7 +18,7 @@
 | 컨텍스트(context) 생성 | `cuInit` → `cuCtxCreate` |
 | 커널을 실행 파일에 **내장**(fatbin) | 커널을 **별도 `.cubin`** 으로 두고 실행 중 `cuModuleLoad` |
 | 커널 이름 → 함수 핸들 연결 | `cuModuleGetFunction(module, "이름")` |
-| `<<<>>>` 인자 마샬링(marshalling) | `void* args[]` 배열을 손으로 구성 → `cuLaunchKernel` |
+| `<<<>>>` 인자 [마샬링(marshalling)](#term-marshalling) | `void* args[]` 배열을 손으로 구성 → `cuLaunchKernel` |
 
 이 부록은 그중에서도 **빌드 과정**(Part A)과 **커널 로딩 과정**(Part B)에 집중합니다.
 
@@ -325,7 +325,7 @@ deviceWriteRandomBlocks    deviceVerifyRandomBlocks
 deviceWritePairedModulo    deviceVerifyPairedModulo
 ```
 
-## B.5 실행 — `cuLaunchKernel` (인자 마샬링)
+## B.5 실행 — `cuLaunchKernel` (인자 [마샬링](#term-marshalling))
 
 런타임 API의 `<<<grid,block,shmem>>>(a,b,c)` 를 드라이버 API로 풀어 쓴 것이 이 판의 `launch()` 헬퍼입니다.
 
@@ -368,6 +368,17 @@ flowchart LR
 ```
 
 > **주의**: `args[]` 에는 값이 아니라 **주소**가 들어갑니다. 그래서 임시값도 lvalue여야 합니다 — `gpuModuloX` 가 `pattern2` 같은 지역 변수를 따로 두는 이유입니다. `shmem`(동적 공유 메모리 바이트 수)은 검증 커널의 `threadErrorCount[]` 리덕션 버퍼 크기(`sizeof(uint)*nThreads`)로 넘어갑니다.
+
+<a id="term-marshalling"></a>
+
+> **📖 용어 — 마샬링(marshalling)**
+>
+> **마샬링**은 데이터를 한 실행 환경에서 다른 실행 환경으로 넘길 수 있도록, 양쪽이 약속한 형식으로 **인자들을 포장(직렬화)하는 작업**입니다. 반대로 받은 쪽이 다시 풀어내는 것은 **언마샬링(unmarshalling)**이라고 합니다. (함수 호출의 인자→스택/레지스터 배치, RPC·IPC의 데이터 전송, JSON/Protobuf 직렬화 등이 모두 마샬링의 예입니다.)
+>
+> - **여기서의 의미**: 호스트가 GPU 커널에 넘길 인자들을, 드라이버가 이해하는 형식으로 포장하는 것.
+> - **런타임 API** `<<<>>>` 는 이 포장을 **컴파일러가 자동**으로 처리합니다 — `deviceVerifyConstant<<<...>>>(base, N, constant, errCnt)`.
+> - **드라이버 API** `cuLaunchKernel` 은 **개발자가 직접** 합니다 — 각 인자의 **주소를 담은 `void* args[]` 배열**을 만들어 넘기고, 드라이버는 이 배열을 순서대로 읽어 GPU의 커널 인자 영역에 배치합니다.
+> - 우리말로는 "직렬화" 또는 "정돈해서 전달"로 옮기지만, 시스템 프로그래밍에서는 보통 원어 그대로 **마샬링**이라고 씁니다.
 
 ## B.6 완료 대기 — `SOFTWAIT` = `cuStreamQuery` 폴링
 
@@ -504,7 +515,7 @@ Makefile에서 `-cubin` → `-ptx`, `CUBIN = memtestG80.ptx` 로 바꾸고 재�
 - **빌드**: 커널 `.cu` → `nvcc -cubin` → **별도 cubin**, 호스트 `.cpp` → `g++` → **실행 파일**(`-lcuda`). 둘은 빌드 시 독립.
 - **로딩**: 실행 중 `cuModuleLoad`(파일→모듈) → `cuModuleGetFunction`(이름→함수, `extern "C"` 덕분) → `cuLaunchKernel`(`void* args[]` 로 인자 전달).
 - **대기/정리**: `SOFTWAIT`(=`cuStreamQuery` 폴링) → `cuMemcpyDtoH` → 합산; 끝나면 `cuMemFree`/`cuModuleUnload`/`cuCtxDestroy`.
-- 런타임 API가 자동으로 해 주던 초기화·커널 내장·인자 마샬링을, 드라이버 API에서는 **개발자가 명시적으로** 수행한다 — 그래서 "커널이 어떻게 로드되는가"를 눈으로 배울 수 있다.
+- 런타임 API가 자동으로 해 주던 초기화·커널 내장·인자 [마샬링](#term-marshalling)을, 드라이버 API에서는 **개발자가 명시적으로** 수행한다 — 그래서 "커널이 어떻게 로드되는가"를 눈으로 배울 수 있다.
 
 ## 참고
 - 원본 소스: `driver_api/` (README: `driver_api/README.md`)
