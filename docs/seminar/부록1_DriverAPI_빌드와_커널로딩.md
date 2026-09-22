@@ -16,7 +16,7 @@
 | 런타임 API가 자동으로 해 주던 일 | 드라이버 API에서는 직접 |
 |---|---|
 | 컨텍스트(context) 생성 | `cuInit` → `cuCtxCreate` |
-| 커널을 실행 파일에 **내장**(fatbin) | 커널을 **별도 `.cubin`** 으로 두고 실행 중 `cuModuleLoad` |
+| 커널을 실행 파일에 **내장**([fatbin](#term-fatbin)) | 커널을 **별도 `.cubin`** 으로 두고 실행 중 `cuModuleLoad` |
 | 커널 이름 → 함수 핸들 연결 | `cuModuleGetFunction(module, "이름")` |
 | `<<<>>>` 인자 [마샬링(marshalling)](#term-marshalling) | `void* args[]` 배열을 손으로 구성 → `cuLaunchKernel` |
 
@@ -74,7 +74,7 @@ flowchart LR
 
 ## A.1 두 갈래 컴파일 — 왜 나눠야 하나
 
-런타임 API 원본(`memtestG80_core.cu`)은 커널과 호스트가 **한 파일**에 섞여 있어 전체를 `nvcc` 로 컴파일했습니다. `nvcc` 는 내부적으로 디바이스 코드를 뽑아 GPU 바이너리로 만들고 이를 실행 파일에 **fatbin**으로 끼워 넣습니다(개발자는 이 과정을 보지 못함).
+런타임 API 원본(`memtestG80_core.cu`)은 커널과 호스트가 **한 파일**에 섞여 있어 전체를 `nvcc` 로 컴파일했습니다. `nvcc` 는 내부적으로 디바이스 코드를 뽑아 GPU 바이너리로 만들고 이를 실행 파일에 **[fatbin](#term-fatbin)**으로 끼워 넣습니다(개발자는 이 과정을 보지 못함).
 
 드라이버 API 판은 이를 **두 갈래**로 명시적으로 쪼갭니다.
 
@@ -214,6 +214,18 @@ make clean             # *.o, 실행 파일, cubin 삭제
 | **fatbin** | 여러 SASS + PTX 묶음 | ✅ 넓음 | 런타임 API 원본이 내부적으로 사용 |
 
 > PTX로 바꾸려면 Makefile의 `-cubin` → `-ptx`, 산출물 `memtestG80.ptx` 로만 바꾸면 됩니다. **로드 코드(Part B)는 그대로** — `cuModuleLoad` 는 cubin/PTX/fatbin을 모두 같은 방식으로 받습니다(PTX면 드라이버가 로드 시 JIT 컴파일).
+
+<a id="term-fatbin"></a>
+
+> **📖 용어 — fatbin (fat binary)**
+>
+> **fatbin**은 같은 커널을 **여러 GPU 아키텍처용으로 컴파일한 코드를 하나로 묶어 담은 컨테이너**입니다. 이름 그대로 여러 버전을 "살찌워(fat)" 넣어 둔 바이너리입니다.
+>
+> - **담기는 것**: 여러 세대의 **SASS**(`sm_70`·`sm_75`·`sm_86` …)에 더해, 미지원/미래 GPU용 안전망으로 **PTX** 1벌.
+> - **왜 필요한가**: `cubin`은 특정 `sm_XX` 전용이라 다른 세대 GPU에서 못 씁니다. 어떤 GPU에서 돌지 미리 알 수 없으니, 여러 버전을 함께 넣어 두고 실행 시 맞는 것을 고르게 합니다.
+> - **실행 시 선택**: GPU에 맞는 SASS가 있으면 그대로 사용 → 없으면 하위호환 SASS → 그것도 없으면 담아 둔 **PTX를 드라이버가 JIT 컴파일**해 사용.
+> - **이 프로젝트에서**: **런타임 API 원본**은 `nvcc`가 커널을 fatbin으로 만들어 **실행 파일에 내장**합니다(그래서 로딩 과정을 볼 일이 없음). 반면 **`driver_api/` 판**은 일부러 fatbin 내장 대신 **단일 cubin을 별도 파일**로 두고 `cuModuleLoad`로 직접 로드해 로딩 과정을 드러냅니다.
+> - 요약: fatbin은 **이식성(여러 GPU 지원) ↔ 크기·단순함**의 절충입니다. `cuobjdump -all <실행파일>` 로 내부에 담긴 아키텍처 코드들을 확인할 수 있습니다.
 
 ---
 
@@ -444,7 +456,7 @@ cuCtxDestroy(cuCtx);          // 컨텍스트 파괴
 |---|---|---|
 | 초기화 | (자동) | `cuInit`, `cuCtxCreate` |
 | 디바이스 열거 | `cudaGetDeviceCount` / `cudaGetDeviceProperties` | `cuDeviceGetCount` / `cuDeviceGetName` / `cuDeviceGetAttribute` |
-| **커널 로딩** | (실행 파일에 fatbin 내장) | **`cuModuleLoad(cubin)` → `cuModuleGetFunction`** |
+| **커널 로딩** | (실행 파일에 [fatbin](#term-fatbin) 내장) | **`cuModuleLoad(cubin)` → `cuModuleGetFunction`** |
 | **커널 실행** | `kernel<<<grid,block,shmem>>>(args)` | **`cuLaunchKernel(func, grid,1,1, block,1,1, shmem, 0, args, 0)`** |
 | 메모리 할당 | `cudaMalloc` / `cudaFree` | `cuMemAlloc` / `cuMemFree` |
 | 메모리 복사 | `cudaMemcpy(...,DtoH/DtoD)` | `cuMemcpyDtoH` / `cuMemcpyDtoD` |
