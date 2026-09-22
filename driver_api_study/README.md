@@ -46,6 +46,52 @@
 
 > 호스트 코드는 이제 **파일 하나**(`memtestG80_cli.cpp`)입니다. Driver API 핵심 흐름을 한 파일에서 위→아래로 읽을 수 있습니다.
 
+## 실행 흐름 (단일 파일)
+
+`memtestG80_cli.cpp` 의 `main()` 이 위에서 아래로 밟는 Driver API 수명주기입니다.
+
+```mermaid
+flowchart TD
+    A["main() · 인자 파싱<br/>-g / [MB] [iters]"] --> B["cuInit(0)"]
+    B --> C["cuDeviceGet · cuDeviceGetName<br/>cuDeviceGetAttribute (compute capability)"]
+    C --> D["cuCtxCreate · 컨텍스트 생성"]
+    D --> E["cuModuleLoad(&quot;memtestG80.cubin&quot;)<br/>→ g_module"]
+    E --> F["cuMemAlloc devTestMem / devTempMem<br/>malloc hostTempMem"]
+    F --> G{"maxIters 반복"}
+    G -->|"각 반복"| H["gpuMovingInversionsOnesZeros()<br/>대표 테스트"]
+    H --> G
+    G -->|"완료"| I["cuMemFree · free<br/>cuModuleUnload · cuCtxDestroy"]
+
+    classDef load fill:#241A16,stroke:#E8A33D,color:#E8A33D;
+    class E load;
+```
+
+대표 테스트가 커널을 부르는 부분(로딩·실행의 핵심)을 확대하면:
+
+```mermaid
+flowchart TD
+    subgraph MI["gpuMovingInversionsOnesZeros"]
+        M1["gpuWriteConstant(0xFFFFFFFF)"] --> M2["SOFTWAIT"]
+        M2 --> M3["gpuVerifyConstant(0xFFFFFFFF)"]
+        M3 --> M4["gpuWriteConstant(0x0)"] --> M5["SOFTWAIT"] --> M6["gpuVerifyConstant(0x0)"]
+    end
+
+    subgraph WV["gpuWriteConstant / gpuVerifyConstant 내부"]
+        W1["K(&quot;device…&quot;)<br/>cuModuleGetFunction (이름→CUfunction · 캐시)"] --> W2["launch() = cuLaunchKernel<br/>(f, 1024,1,1, 512,1,1, shmem, 0, args, 0)"]
+        W2 --> W3["(verify) SOFTWAIT · cuStreamQuery 폴링"]
+        W3 --> W4["cuMemcpyDtoH → 블록별 오류 합산"]
+    end
+
+    M3 -.호출.-> W1
+    M6 -.호출.-> W1
+
+    classDef k fill:#12212A,stroke:#3FB8C4,color:#3FB8C4;
+    class W1,W2,W3,W4 k;
+```
+
+- **cuModuleLoad**(cubin→모듈) → **cuModuleGetFunction**(이름→함수, `K()` 캐시) → **cuLaunchKernel** 이 로딩·실행의 3핵심입니다.
+- `deviceVerifyConstant` 는 공유 메모리 트리 리덕션으로 블록별 오류 수를 만들고, 호스트가 `cuMemcpyDtoH` 로 받아 합산합니다.
+
 ## 빌드 & 실행
 
 ```bash
