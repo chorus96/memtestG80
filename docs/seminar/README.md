@@ -32,8 +32,9 @@
 | [`presentation/`](presentation/) | LACSS 2010 발표 슬라이드 한국어판 (PPTX 21매, Fermi·AMD 확장) + 원본 PDF | ✅ 완성 |
 | [`부록1_DriverAPI_빌드와_커널로딩.md`](부록1_DriverAPI_빌드와_커널로딩.md) | **부록 1** — `driver_api/` 분석: 빌드 과정(cubin) & 커널 로딩(cuModuleLoad→cuLaunchKernel), block diagram 8종 | ✅ 부록 |
 | [`slides/부록1_DriverAPI_빌드와_커널로딩.pptx`](slides/) | 부록 1 슬라이드 덱 (14매, 다이어그램 포함 — 빌드 파이프라인 · 커널 로딩 시퀀스) | ✅ 부록 |
+| [`부록2_DriverAPI_최소예제_단일파일.md`](부록2_DriverAPI_최소예제_단일파일.md) | **부록 2** — `driver_api_study/` 분석: Driver API 최소 예제로 간결화(단일 파일화)한 과정 · 무엇을 덜어낼 수 있나, block diagram 3종 | ✅ 부록 |
 
-**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1 + 발표 PPTX 한국어판 1 + 심화 부록 1.
+**시리즈 전체(세션 0~5) 완성** — 커리큘럼 1 + 슬라이드 덱 6 + 실습랩 6 + 요약 HTML 덱 1 + 원논문 PDF + 한국어 번역 EPUB 1 + 발표 PPTX 한국어판 1 + 심화 부록 2.
 
 ## 세션 로드맵
 
