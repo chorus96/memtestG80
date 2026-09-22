@@ -187,7 +187,26 @@ __global__ void deviceWriteConstant(uint* base, uint N, const uint constant) { .
 } // extern "C"
 ```
 
-C++ 컴파일러는 오버로딩을 위해 함수 이름을 **맹글링(name mangling)** 합니다(`deviceWriteConstant` → `_Z19deviceWriteConstant...`). 그러면 나중에 이름으로 커널을 찾을 수 없습니다. `extern "C"` 로 감싸면 맹글링이 꺼져, cubin 안에 **소스에 쓴 이름 그대로** 심볼이 남습니다. → Part B의 `cuModuleGetFunction(module, "deviceWriteConstant")` 가 성립하는 이유입니다.
+C++ 컴파일러는 오버로딩을 위해 함수 이름을 **[맹글링(name mangling)](#term-mangling)** 합니다(`deviceWriteConstant` → `_Z19deviceWriteConstant...`). 그러면 나중에 이름으로 커널을 찾을 수 없습니다. `extern "C"` 로 감싸면 맹글링이 꺼져, cubin 안에 **소스에 쓴 이름 그대로** 심볼이 남습니다. → Part B의 `cuModuleGetFunction(module, "deviceWriteConstant")` 가 성립하는 이유입니다.
+
+<a id="term-mangling"></a>
+
+> **📖 용어 — 이름 맹글링(name mangling)**
+>
+> **발음**: [ˈmæŋɡlɪŋ] "맹글링" · 우리말로는 "이름 장식/수식"으로도 옮김.
+>
+> **맹글링**은 C++ 컴파일러가 함수·변수 이름을 **고유한 내부 심볼 이름으로 변형(인코딩)하는 것**입니다. C++은 **오버로딩·네임스페이스·클래스 멤버·템플릿**을 지원하는데, 링커(linker)는 이름만 보고 심볼을 잇기 때문에, 같은 이름을 구별하려면 **매개변수 타입·소속 정보를 이름에 새겨** 서로 다른 심볼로 만들어야 합니다.
+>
+> ```
+> void f(int)          →  _Z1fi
+> void f(double)       →  _Z1fd
+> Ns::C::f(int, char*) →  _ZN2Ns1C1fEiPc   (Itanium C++ ABI · g++/clang)
+> ```
+>
+> - **규칙은 ABI마다 다름**: g++/clang은 Itanium C++ ABI, MSVC는 `?f@@YAXH@Z` 형식.
+> - **디맹글링(demangling)**: 반대로 `_Z1fi` → `f(int)` 복원. 도구는 `c++filt`, `abi::__cxa_demangle`.
+> - **`extern "C"` 와의 관계**: C는 오버로딩이 없어 맹글링을 하지 않습니다. `extern "C"`로 감싸면 맹글링이 꺼져 심볼이 **소스 이름 그대로** 남고, 그래서 `cuModuleGetFunction(m, "deviceWriteConstant")`(Part B)가 성립합니다.
+> - **어원**: 동사 *mangle* = "난도질하다, 짓이겨 알아보기 어렵게 망가뜨리다"(중세 영어 `manglen` ← 고대 프랑스어 `mahaignier`, maim과 같은 뿌리). 원래 이름을 `_Z19device...`처럼 **알아보기 힘들게 뭉갠다**는 뉘앙스입니다.
 
 ## A.3 호스트 컴파일 — `nvcc` 없이 `g++` 로
 
@@ -536,7 +555,7 @@ ls -l memtestG80 memtestG80.cubin   # 실행 파일과 cubin이 "따로" 생김
 cuobjdump -symbols memtestG80.cubin | grep device   # extern "C" 이름들이 그대로 보임
 cuobjdump -sass memtestG80.cubin | head             # SASS 디스어셈블
 ```
-**관찰**: cubin은 실행 파일과 **별도 파일**이다. 심볼 이름이 맹글링되지 않았다.
+**관찰**: cubin은 실행 파일과 **별도 파일**이다. 심볼 이름이 [맹글링](#term-mangling)되지 않았다.
 
 ### Exercise 2 — 아키텍처 불일치로 로드 실패 재현
 ```bash
@@ -562,7 +581,7 @@ Makefile에서 `-cubin` → `-ptx`, `CUBIN = memtestG80.ptx` 로 바꾸고 재�
 
 ### Exercise 5 — 커널을 하나 추가해 이름으로 로드해 보기
 `memtestG80_kernels.cu` 의 `extern "C" { … }` 안에 간단한 커널을 추가하고, 호스트에서 `K("myKernel")` 로 조회·실행.
-**관찰**: `extern "C"` 를 빼면 `cuModuleGetFunction` 이 이름을 못 찾는다(맹글링 확인) → A.2의 이유를 몸으로 이해.
+**관찰**: `extern "C"` 를 빼면 `cuModuleGetFunction` 이 이름을 못 찾는다([맹글링](#term-mangling) 확인) → A.2의 이유를 몸으로 이해.
 
 ---
 
