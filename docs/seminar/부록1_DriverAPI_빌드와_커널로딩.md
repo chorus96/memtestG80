@@ -107,7 +107,7 @@ $(CUBIN): memtestG80_kernels.cu
 	$(NVCC) -cubin -arch=$(SMARCH) -Xptxas -v -o $(CUBIN) memtestG80_kernels.cu
 ```
 
-`nvcc -cubin` 은 `.cu` 안의 디바이스 코드를 **SASS**(특정 GPU 세대의 실제 기계어)로 컴파일해 `.cubin` 파일 하나로 내보냅니다. 내부 단계는 이렇습니다.
+`nvcc -cubin` 은 `.cu` 안의 디바이스 코드를 **[SASS](#term-sass)**(특정 GPU 세대의 실제 기계어)로 컴파일해 `.cubin` 파일 하나로 내보냅니다. 그 사이의 중간표현이 **[PTX](#term-ptx)** 입니다. 내부 단계는 이렇습니다.
 
 ```mermaid
 flowchart LR
@@ -122,6 +122,27 @@ flowchart LR
 - **`-arch=$(SMARCH)`**: 어느 GPU 세대의 SASS를 낼지 지정. `sm_52`(Maxwell), `sm_75`(Turing/T4), `sm_86`(Ampere), `sm_89`(Ada) 등.
 - **`-Xptxas -v`**: PTX 어셈블러에 verbose 옵션을 넘겨 **레지스터/공유 메모리 사용량**을 출력 → 커널 점유율(occupancy) 감 잡기용.
 - **산출물 `memtestG80.cubin`**: 여러 커널을 담은 **ELF 형식 컨테이너**. `cuobjdump -sass memtestG80.cubin` 으로 디스어셈블해 볼 수 있습니다.
+
+<a id="term-ptx"></a>
+
+> **📖 용어 — PTX (Parallel Thread eXecution)**
+>
+> **PTX**는 NVIDIA GPU의 **가상 ISA(중간표현)** 입니다. 특정 하드웨어에 매이지 않은 **아키텍처 독립적**인 어셈블리로, 무한한 가상 레지스터를 쓰는 등 사람이 비교적 읽기 쉬운 수준입니다. CPU 세계의 "이식 가능한 중간 코드(예: 바이트코드)"에 해당합니다.
+>
+> - **위치**: `CUDA C++ → (nvcc 프런트엔드) → PTX → (ptxas) → SASS` 파이프라인의 중간 단계.
+> - **이식성**: 실제 기계어가 아니므로, 로드 시 드라이버가 대상 GPU에 맞는 SASS로 **JIT 컴파일**합니다 → 여러 세대 GPU에서 동작(첫 실행이 살짝 느림).
+> - **도구**: `nvcc -ptx` 로 산출. `driver_api/`에서 `-cubin`을 `-ptx`로 바꾸면 이식성 있는 로딩이 됩니다(로드 코드는 동일).
+
+<a id="term-sass"></a>
+
+> **📖 용어 — SASS (Streaming ASSembler)**
+>
+> **SASS**는 특정 GPU 아키텍처(`sm_XX`)에서 하드웨어가 직접 실행하는 **실제 기계어(native ISA)** 입니다. 실제 레지스터 할당·명령 스케줄링이 반영된, PTX보다 더 저수준의 코드입니다. `cubin` 안에 담기는 것이 바로 이 SASS입니다.
+>
+> - **PTX와의 관계**: PTX가 "가상 중간표현"이라면 SASS는 "특정 세대 전용 진짜 기계어" — `ptxas -arch=sm_XX` 가 PTX를 SASS로 번역합니다.
+> - **아키텍처 전용**: SASS는 그 `sm_XX` 세대에서만 유효 → **cubin이 특정 아키텍처 전용인 근본 이유**(그래서 `SMARCH`를 GPU에 맞춰야 함).
+> - **도구**: `cuobjdump -sass <cubin>` 으로 디스어셈블해 볼 수 있습니다.
+> - **풀네임 주의**: 관례적으로 **"Streaming Assembler"**(SM=Streaming Multiprocessor 계열)로 풀지만, NVIDIA가 공식 문서에서 명확히 정의하진 않아 "Shader Assembly"로 푸는 경우도 있습니다 — 실무에선 보통 그냥 **SASS**로 씁니다.
 
 ### ⚠️ cubin은 "그 아키텍처 전용"
 
@@ -209,8 +230,8 @@ make clean             # *.o, 실행 파일, cubin 삭제
 
 | 산출물 | 담긴 것 | 이식성 | 이 판의 선택 |
 |---|---|---|---|
-| **cubin** | 특정 `sm_XX` SASS | ❌ 그 세대 전용 | ✅ (요청대로 "cubin 로딩 구조" 시연) |
-| **PTX** | 가상 ISA | ✅ 드라이버가 실행 시 JIT | 대안 (아래) |
+| **cubin** | 특정 `sm_XX` [SASS](#term-sass) | ❌ 그 세대 전용 | ✅ (요청대로 "cubin 로딩 구조" 시연) |
+| **[PTX](#term-ptx)** | 가상 ISA | ✅ 드라이버가 실행 시 JIT | 대안 (아래) |
 | **fatbin** | 여러 SASS + PTX 묶음 | ✅ 넓음 | 런타임 API 원본이 내부적으로 사용 |
 
 > PTX로 바꾸려면 Makefile의 `-cubin` → `-ptx`, 산출물 `memtestG80.ptx` 로만 바꾸면 됩니다. **로드 코드(Part B)는 그대로** — `cuModuleLoad` 는 cubin/PTX/fatbin을 모두 같은 방식으로 받습니다(PTX면 드라이버가 로드 시 JIT 컴파일).
