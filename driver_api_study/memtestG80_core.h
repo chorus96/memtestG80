@@ -83,7 +83,6 @@ public:
     void setLCGPeriod(int period) { lcgPeriod = period; }
     int  getLCGPeriod() const { return lcgPeriod; }
 
-    bool gpuMemoryBandwidth(double& bandwidth, uint mbToTest, uint iters=5);
     bool gpuWriteConstant(const uint constant) const;
     bool gpuVerifyConstant(uint& errorCount, const uint constant) const;
     bool gpuShortLCG0(uint& errorCount, const uint repeats) const;
@@ -101,7 +100,6 @@ public:
 // 저수준 __host__ 함수 (Driver API 판). base/blockErrorCount 는 CUdeviceptr,
 // errorCounts 는 호스트 버퍼(uint*). 반환값은 오류 수 또는 센티넬.
 // ===================================================================
-double gpuMemoryBandwidth(CUdeviceptr src, CUdeviceptr dst, uint mbToTest, uint iters);
 void   gpuWriteConstant(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint constant);
 uint   gpuVerifyConstant(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint constant, CUdeviceptr blockErrorCount, uint* errorCounts);
 

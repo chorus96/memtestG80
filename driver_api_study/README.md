@@ -10,7 +10,16 @@
 1. **ezOptionParser.hpp 제거** ✅
    - 서드파티 명령행 파서(`ezOptionParser.hpp`)는 CUDA와 직접 관련이 없어 삭제했습니다.
    - `memtestG80_cli.cpp` 가 표준 C++ 만으로 인자를 직접 파싱합니다
-     (`-g/--gpu N`, `-l/--license`, 위치 인자 `[MB] [iters]` — 동작·기본값은 동일).
+     (`-g/--gpu N`, 위치 인자 `[MB] [iters]` — 동작·기본값은 동일).
+
+2. **라이선스 출력 제거** ✅
+   - `-l/--license` 플래그와 `print_licensing()`(라이선스 문구 출력)을 삭제했습니다. CUDA 동작과 무관한 부가 기능입니다.
+   - (라이선스는 여전히 LGPL v3 — 코드 상단 주석·본 README 참조.)
+
+3. **대역폭 측정 제거** ✅
+   - 시작 시의 device-to-device 복사 기반 대역폭 측정 블록을 삭제했습니다.
+   - 이제 쓰이지 않는 `gpuMemoryBandwidth`(free 함수 + `memtestState` 메서드)도 `core`에서 함께 제거했습니다.
+   - 커널 로딩·실행 흐름 학습에는 13종 메모리 테스트만으로 충분합니다.
 
 ## 구성
 

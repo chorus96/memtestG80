@@ -61,22 +61,6 @@ static CUresult launch(CUfunction f, uint grid, uint block, uint shmem, void** a
 }
 
 // ===================================================================
-// 대역폭 측정 (device-to-device 복사)
-// ===================================================================
-double gpuMemoryBandwidth(CUdeviceptr src, CUdeviceptr dst, uint mbToTest, uint iters) {
-    uint start = getTimeMilliseconds();
-    for (uint i = 0; i < iters; i++) {
-        cuMemcpyDtoD(dst, src, ((size_t) mbToTest) * 1048576);
-    }
-    // D2D 복사는 비동기 → 정확한 타이밍을 위해 반드시 동기화
-    cuCtxSynchronize();
-    uint end = getTimeMilliseconds();
-    // 읽기 + 쓰기 → ×2
-    double bw = 2.0 * ((double) mbToTest * iters) / ((end - start) / 1000.0);
-    return bw;
-}
-
-// ===================================================================
 // 상수 쓰기/검증
 // ===================================================================
 void gpuWriteConstant(const uint nBlocks, const uint nThreads, CUdeviceptr base, uint N, const uint constant) {
@@ -298,14 +282,6 @@ void memtestState::deallocate() {
         allocated = false;
     }
     initTime = 0;
-}
-
-bool memtestState::gpuMemoryBandwidth(double& bandwidth, uint mbToTest, uint iters) {
-    if (!allocated || megsToTest < 2*mbToTest) return false;
-    // CUdeviceptr 은 바이트 주소 → dst = base + mbToTest MiB
-    CUdeviceptr dst = devTestMem + (CUdeviceptr) mbToTest * 1048576;
-    bandwidth = ::gpuMemoryBandwidth(devTestMem, dst, mbToTest, iters);
-    return true;
 }
 
 bool memtestState::gpuWriteConstant(const uint constant) const {

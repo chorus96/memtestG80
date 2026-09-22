@@ -28,14 +28,7 @@ static void print_usage(void) {
     printf("     -------------------------------------------------------------\n\n");
     printf("      Available flags:\n");
     printf("        --gpu N ,-g N : run test on the Nth (from 0) CUDA GPU\n");
-    printf("        --license ,-l : show license terms for this build\n");
     printf("\n");
-}
-
-static void print_licensing(void) {
-    printf("Copyright 2009, Stanford University\n");
-    printf("Licensed under the GNU Library General Public License (LGPL), version 3.0\n");
-    printf("Please see the file COPYING in the source distribution for details\n\n");
 }
 
 // 드라이버 API 오류를 문자열로
@@ -63,12 +56,11 @@ int main(int argc, const char** argv) {
     uint megsToTest = 128;
     uint maxIters   = 50;
     int  gpuID      = 0;
-    int  showLicense = 0;
 
     print_usage();
 
     // ---- 인자 파싱 (ezOptionParser 없이, 표준 C++ 만으로) ----
-    //   플래그: -g/--gpu N, -l/--license
+    //   플래그: -g/--gpu N
     //   위치 인자: [MB] [iters]  (플래그가 아닌 순서대로 최대 2개)
     const char* positional[2] = { 0, 0 };
     int nPositional = 0;
@@ -81,8 +73,6 @@ int main(int argc, const char** argv) {
                 printf("Error: %s requires a GPU index argument\n", arg.c_str());
                 exit(2);
             }
-        } else if (arg == "-l" || arg == "--license") {
-            showLicense = 1;
         } else if (!arg.empty() && arg[0] == '-') {
             printf("Error: unknown flag '%s'\n", arg.c_str());
             exit(2);
@@ -99,7 +89,6 @@ int main(int argc, const char** argv) {
     } else if (nPositional == 1) {
         printf("Error: Bad argument for [MB GPU RAM to test] [# iters]\n");
     }
-    if (showLicense) print_licensing();
 
     // ---- Driver API 초기화 ----
     CUresult res = cuInit(0);
@@ -163,17 +152,6 @@ int main(int argc, const char** argv) {
     }
     printf("Running %u iterations of tests over %u MB of GPU memory on card %d: %s (sm_%d%d)\n\n",
            maxIters, tester.size(), gpuID, devName, ccMajor, ccMinor);
-
-    // ---- 대역폭 측정 ----
-    const unsigned bw_iters = 20;
-    printf("Running memory bandwidth test over %u iterations of %u MB transfers...\n", bw_iters, tester.size()/2);
-    double bandwidth;
-    if (!tester.gpuMemoryBandwidth(bandwidth, tester.size()/2, bw_iters)) {
-        printf("\tTest failed!\n");
-        bandwidth = 0;
-    } else {
-        printf("\tEstimated bandwidth %.02f MB/s\n\n", bandwidth);
-    }
 
     uint accumulatedErrors = 0, iterErrors;
     uint errorCounts[15];
