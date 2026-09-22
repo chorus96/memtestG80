@@ -121,7 +121,7 @@ flowchart LR
 
 - **`-arch=$(SMARCH)`**: 어느 GPU 세대의 SASS를 낼지 지정. `sm_52`(Maxwell), `sm_75`(Turing/T4), `sm_86`(Ampere), `sm_89`(Ada) 등.
 - **`-Xptxas -v`**: PTX 어셈블러([ptxas](#term-ptxas))에 verbose 옵션을 넘겨 **레지스터/공유 메모리 사용량**을 출력 → 커널 점유율(occupancy) 감 잡기용.
-- **산출물 `memtestG80.cubin`**: 여러 커널을 담은 **ELF 형식 컨테이너**. `cuobjdump -sass memtestG80.cubin` 으로 디스어셈블해 볼 수 있습니다.
+- **산출물 `memtestG80.cubin`**: 여러 커널을 담은 **ELF 형식 컨테이너**. [`cuobjdump`](#term-cuobjdump)` -sass memtestG80.cubin` 으로 디스어셈블해 볼 수 있습니다.
 
 <a id="term-ptx"></a>
 
@@ -160,7 +160,7 @@ flowchart LR
 > - **입력/출력**: PTX → SASS. `-arch=sm_XX` 로 어느 세대 SASS를 낼지 지정.
 > - **`-Xptxas`**: nvcc가 옵션을 **ptxas로 전달**하라는 뜻. 예) `-Xptxas -v` = ptxas에 verbose → 레지스터·공유 메모리 사용량 출력.
 > - **JIT와의 관계**: PTX를 실행 시 드라이버가 SASS로 컴파일할 때도 사실상 ptxas 상당 기능이 동작합니다.
-> - **혼동 주의**: `nvcc`(전체 드라이버) · [`cicc`](#term-cicc)(C++→PTX) · **`ptxas`(PTX→SASS)** · `fatbinary`(fatbin 묶기) · `cuobjdump`(들여다보기)는 서로 다른 단계의 도구입니다.
+> - **혼동 주의**: `nvcc`(전체 드라이버) · [`cicc`](#term-cicc)(C++→PTX) · **`ptxas`(PTX→SASS)** · `fatbinary`(fatbin 묶기) · [`cuobjdump`](#term-cuobjdump)(들여다보기)는 서로 다른 단계의 도구입니다.
 
 <a id="term-cicc"></a>
 
@@ -173,6 +173,26 @@ flowchart LR
 > - **내부 구조**: **EDG C++ 프런트엔드**(파싱) + **NVVM**(NVIDIA의 **LLVM 기반** 최적화·코드 생성). 대략 `CUDA C++ → NVVM IR(≈LLVM IR) → 최적화 → PTX`. 즉 "디바이스 코드용 LLVM 컴파일러"로 이해하면 됩니다.
 > - **호스트 코드는?**: cicc가 아니라 `cudafe++` 가 호스트/디바이스를 분리한 뒤, 호스트 몫은 g++ 같은 일반 컴파일러로 갑니다.
 > - **풀네임 주의**: NVIDIA가 문서화하지 않은 **내부 도구**라 **공식 풀네임이 없습니다**(흔히 "CUDA internal C compiler"로 추측하나 비공식).
+
+<a id="term-cuobjdump"></a>
+
+> **📖 용어 — cuobjdump (CUDA object dump)**
+>
+> **발음**: "큐-오브젝트-덤프" (`cu` = CUDA + `objdump`); 짧게 "큐-옵-덤프".
+>
+> **cuobjdump**는 CUDA 바이너리([cubin](#term-fatbin)·[fatbin](#term-fatbin)과 이를 내장한 실행 파일)의 **내부를 들여다보는 검사·디스어셈블 도구**입니다. 유닉스 `objdump`의 CUDA 판으로, 코드를 **생성하는 게 아니라 조회(읽기 전용)** 합니다.
+>
+> | 옵션 | 하는 일 |
+> |---|---|
+> | `-sass` | [SASS](#term-sass)(실제 기계어) 디스어셈블 |
+> | `-ptx` | 내장된 [PTX](#term-ptx) 출력 |
+> | `-symbols` | 심볼 목록 — `extern "C"` 커널 이름 확인 |
+> | `-elf` | cubin의 ELF 헤더·섹션 |
+> | `-res-usage` | 커널별 레지스터·공유 메모리 사용량 |
+> | `-all` | [fatbin](#term-fatbin) 안에 담긴 여러 아키텍처 코드 전체 |
+>
+> - **이름 뜻**: object(오브젝트 바이너리)를 dump(내용 출력) → 유닉스 `objdump` 관례.
+> - **비슷한 도구**: `nvdisasm`(SASS 전용 정밀 디스어셈블러, 제어 흐름 그래프까지) · `nvprune`(fatbin에서 불필요한 아키텍처 제거).
 
 ### ⚠️ cubin은 "그 아키텍처 전용"
 
