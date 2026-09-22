@@ -156,11 +156,23 @@ flowchart LR
 >
 > **ptxas**는 [PTX](#term-ptx)(가상 ISA)를 특정 GPU 세대의 [SASS](#term-sass)(실제 기계어)로 번역하는 **백엔드 어셈블러 겸 최적화 컴파일러**입니다. 이름의 `as`는 유닉스 어셈블러 관례(GNU `as` 등)에서 왔지만, 실제로는 **레지스터 할당·명령 스케줄링·최적화**까지 수행해 단순 어셈블러보다는 백엔드 컴파일러에 가깝습니다.
 >
-> - **파이프라인 위치**: `CUDA C++ → (cicc 프런트엔드) → PTX → (ptxas) → SASS → cubin`. `nvcc -cubin -arch=sm_75` 는 내부적으로 cicc → **ptxas** 를 호출합니다.
+> - **파이프라인 위치**: `CUDA C++ → (cicc 프런트엔드) → PTX → (ptxas) → SASS → cubin`. `nvcc -cubin -arch=sm_75` 는 내부적으로 [cicc](#term-cicc) → **ptxas** 를 호출합니다.
 > - **입력/출력**: PTX → SASS. `-arch=sm_XX` 로 어느 세대 SASS를 낼지 지정.
 > - **`-Xptxas`**: nvcc가 옵션을 **ptxas로 전달**하라는 뜻. 예) `-Xptxas -v` = ptxas에 verbose → 레지스터·공유 메모리 사용량 출력.
 > - **JIT와의 관계**: PTX를 실행 시 드라이버가 SASS로 컴파일할 때도 사실상 ptxas 상당 기능이 동작합니다.
-> - **혼동 주의**: `nvcc`(전체 드라이버) · `cicc`(C++→PTX) · **`ptxas`(PTX→SASS)** · `fatbinary`(fatbin 묶기) · `cuobjdump`(들여다보기)는 서로 다른 단계의 도구입니다.
+> - **혼동 주의**: `nvcc`(전체 드라이버) · [`cicc`](#term-cicc)(C++→PTX) · **`ptxas`(PTX→SASS)** · `fatbinary`(fatbin 묶기) · `cuobjdump`(들여다보기)는 서로 다른 단계의 도구입니다.
+
+<a id="term-cicc"></a>
+
+> **📖 용어 — cicc**
+>
+> **발음**: 표준은 없고 "씩"([sɪk], *kick* 운율) 또는 철자 그대로 "씨-아이-씨-씨"로 읽습니다.
+>
+> **cicc**는 CUDA 툴체인의 **디바이스 코드 프런트엔드 컴파일러** — `.cu` 안의 **CUDA C++ 디바이스 코드를 [PTX](#term-ptx)로 컴파일**합니다. `nvcc`가 디바이스 컴파일에서 가장 먼저 호출하는 단계로, 그다음 [ptxas](#term-ptxas)가 PTX→[SASS](#term-sass)로 이어받습니다.
+>
+> - **내부 구조**: **EDG C++ 프런트엔드**(파싱) + **NVVM**(NVIDIA의 **LLVM 기반** 최적화·코드 생성). 대략 `CUDA C++ → NVVM IR(≈LLVM IR) → 최적화 → PTX`. 즉 "디바이스 코드용 LLVM 컴파일러"로 이해하면 됩니다.
+> - **호스트 코드는?**: cicc가 아니라 `cudafe++` 가 호스트/디바이스를 분리한 뒤, 호스트 몫은 g++ 같은 일반 컴파일러로 갑니다.
+> - **풀네임 주의**: NVIDIA가 문서화하지 않은 **내부 도구**라 **공식 풀네임이 없습니다**(흔히 "CUDA internal C compiler"로 추측하나 비공식).
 
 ### ⚠️ cubin은 "그 아키텍처 전용"
 
