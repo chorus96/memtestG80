@@ -17,17 +17,8 @@
 #include "memtestG80_core.h"
 
 static void print_usage(void) {
-    printf("     -------------------------------------------------------------\n");
-    printf("     |             MemtestG80 v1.00 (CUDA Driver API)            |\n");
-    printf("     |                       study edition                       |\n");
-    printf("     | Usage: memtestG80 [flags] [MB GPU RAM to test] [# iters]  |\n");
-    printf("     |                                                           |\n");
-    printf("     | Defaults: GPU 0, 128MB RAM, 50 test iterations            |\n");
-    printf("     | Amount of tested RAM will be rounded up to nearest 2MB    |\n");
-    printf("     -------------------------------------------------------------\n\n");
-    printf("      Available flags:\n");
-    printf("        --gpu N ,-g N : run test on the Nth (from 0) CUDA GPU\n");
-    printf("\n");
+    printf("MemtestG80 (CUDA Driver API, study edition)\n");
+    printf("Usage: memtestG80 [-g N] [MB] [iters]   (defaults: GPU 0, 128 MB, 50 iters)\n\n");
 }
 
 // 드라이버 API 오류를 문자열로
